@@ -43,4 +43,4 @@ Every module has tests that were mutation-checked; a mutation that survives mean
 
 ## Not done yet
 `SKILL.md` and the reference guides, a demo agent with planted flaws (the skill's own test), the HTTP/RAG/memory variants,
-a real-API smoke test of the meter, licence and release. Plan: `docs/REDTEAM_SKILL_PLAN.md` in the Anena AI repo's notes.
+a real-API smoke test of the meter, licence and release.
