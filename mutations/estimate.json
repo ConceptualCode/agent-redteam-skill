@@ -1,0 +1,32 @@
+[
+ {
+  "find": "expected = runs * per_test + (p[\"generation_cost\"] if grader_model else 0.0)",
+  "replace": "expected = runs * per_test",
+  "note": "generation fee dropped"
+ },
+ {
+  "find": "\"ceiling\": round(expected * 2, 4)",
+  "replace": "\"ceiling\": round(expected, 4)",
+  "note": "ceiling equals expected"
+ },
+ {
+  "find": "runs = tests * repeats",
+  "replace": "runs = tests",
+  "note": "repeats ignored"
+ },
+ {
+  "find": "measured_call_cost if measured_call_cost is not None else",
+  "replace": "prices.cost_usd(model, p[\"prompt_tokens\"], 0, p[\"completion_tokens\"]) if True else",
+  "note": "measured cost ignored"
+ },
+ {
+  "find": "if est[\"ceiling\"] <= budget:",
+  "replace": "if est[\"ceiling\"] < budget:",
+  "note": "verdict boundary off by one"
+ },
+ {
+  "find": "if \"cost\" in entry:",
+  "replace": "if True:",
+  "note": "error lines crash the average"
+ }
+]
