@@ -1,0 +1,77 @@
+[
+ {
+  "find": "if budget <= 0:",
+  "replace": "if budget < 0:",
+  "note": "a zero budget accepted"
+ },
+ {
+  "find": "exhausted = self.state[\"spent\"] >= self.budget",
+  "replace": "exhausted = self.state[\"spent\"] > self.budget",
+  "note": "cap check off by one"
+ },
+ {
+  "find": "self.state[\"refused\"] += 1",
+  "replace": "pass",
+  "note": "refusals not counted"
+ },
+ {
+  "find": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\"}",
+  "replace": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\", \"x-evil\"}",
+  "note": "extra headers forwarded"
+ },
+ {
+  "find": "if payload.get(\"stream\"):",
+  "replace": "if False:",
+  "note": "streaming accepted"
+ },
+ {
+  "find": "                self.prices.base_model(model)\n            except KeyError:",
+  "replace": "                pass\n            except KeyError:",
+  "note": "unpriced models accepted"
+ },
+ {
+  "find": "except OSError as exc:",
+  "replace": "except ZeroDivisionError as exc:",
+  "note": "upstream failures not handled"
+ },
+ {
+  "find": "self.state[\"upstream_errors\"] += 1",
+  "replace": "pass",
+  "note": "upstream failures not counted"
+ },
+ {
+  "find": "if status == 200 and method == \"POST\":",
+  "replace": "if method == \"POST\":",
+  "note": "failed calls counted as priced"
+ },
+ {
+  "find": "self.state[\"spent\"] += cost",
+  "replace": "self.state[\"spent\"] += 0",
+  "note": "cost never added"
+ },
+ {
+  "find": "if not path.startswith(\"/v1/\"):",
+  "replace": "if False:",
+  "note": "unknown paths forwarded"
+ },
+ {
+  "find": "        if method == \"POST\":\n            if payload.get(\"stream\"):",
+  "replace": "        if True:\n            if payload.get(\"stream\"):",
+  "note": "GET requests checked like POST"
+ },
+ {
+  "find": "if self.log_bodies:",
+  "replace": "if True:",
+  "note": "bodies always logged"
+ },
+ {
+  "find": "\"remaining\": round(self.budget - self.state[\"spent\"], 4)",
+  "replace": "\"remaining\": round(self.state[\"spent\"], 4)",
+  "note": "remaining budget wrong"
+ },
+ {
+  "find": "self.state[\"by_model\"][family] = round(self.state[\"by_model\"].get(family, 0) + cost, 6)",
+  "replace": "self.state[\"by_model\"][family] = round(cost, 6)",
+  "note": "per-model totals overwritten"
+ }
+]

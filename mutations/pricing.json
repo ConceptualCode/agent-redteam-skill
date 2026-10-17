@@ -1,0 +1,27 @@
+[
+ {
+  "find": "fresh = max(prompt_tokens - cached_tokens, 0)",
+  "replace": "fresh = prompt_tokens - cached_tokens",
+  "note": "negative fresh tokens allowed"
+ },
+ {
+  "find": "cached_tokens * cached +",
+  "replace": "cached_tokens * inp +",
+  "note": "cached tokens billed at the full rate"
+ },
+ {
+  "find": "model.startswith(m + \"-\")",
+  "replace": "model.startswith(m)",
+  "note": "a different family sharing a prefix matches"
+ },
+ {
+  "find": "return max(matches, key=len)",
+  "replace": "return matches[0]",
+  "note": "shorter family chosen over the longest"
+ },
+ {
+  "find": "/ 1_000_000",
+  "replace": "/ 1_000",
+  "note": "wrong per-million divisor"
+ }
+]

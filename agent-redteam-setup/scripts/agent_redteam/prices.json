@@ -1,0 +1,8 @@
+{
+  "updated": "2026-10-15",
+  "note": "USD per 1M tokens as [input, cached input, output]; OpenAI standard tier as checked on the date above. Prices change: update this file or pass --prices. A model not listed here is refused by the meter.",
+  "per_million_usd": {
+    "gpt-4.1": [2.00, 0.50, 8.00],
+    "gpt-4.1-mini": [0.40, 0.10, 1.60]
+  }
+}
