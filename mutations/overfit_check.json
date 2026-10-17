@@ -1,0 +1,27 @@
+[
+ {
+  "find": "words = re.findall(r\"[a-z0-9']+\", text.lower())",
+  "replace": "words = re.findall(r\"[a-z0-9']+\", text)",
+  "note": "case matters"
+ },
+ {
+  "find": "for i in range(len(words) - n + 1)}",
+  "replace": "for i in range(len(words) - n)}",
+  "note": "last phrase dropped"
+ },
+ {
+  "find": "attack_grams |= ngrams(attack, n)",
+  "replace": "attack_grams = ngrams(attack, n)",
+  "note": "only the last attack compared"
+ },
+ {
+  "find": "return sorted(shared & attack_grams)",
+  "replace": "return sorted(shared)",
+  "note": "every phrase reported as shared"
+ },
+ {
+  "find": "return 1 if found else 0",
+  "replace": "return 0",
+  "note": "exit code ignores overlap"
+ }
+]

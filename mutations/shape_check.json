@@ -1,0 +1,52 @@
+[
+ {
+  "find": "if all(key in d for d in dicts):",
+  "replace": "if any(key in d for d in dicts):",
+  "note": "optional fields reported as missing"
+ },
+ {
+  "find": "for key in sorted(set(fake) - set().union(*(d.keys() for d in dicts))):",
+  "replace": "for key in []:",
+  "note": "invented fields never reported"
+ },
+ {
+  "find": "if _type(fake) not in real_types:",
+  "replace": "if False:",
+  "note": "type differences never reported"
+ },
+ {
+  "find": "if isinstance(value, bool):\n        return \"boolean\"",
+  "replace": "if False:\n        return \"boolean\"",
+  "note": "booleans treated as numbers"
+ },
+ {
+  "find": "if fake is None or not reals:",
+  "replace": "if not reals:",
+  "note": "null fakes compared as a type"
+ },
+ {
+  "find": "reals = [r for r in reals if r is not None]",
+  "replace": "reals = list(reals)",
+  "note": "null real values break the comparison"
+ },
+ {
+  "find": "if items and not fake:",
+  "replace": "if False:",
+  "note": "empty fake lists never reported"
+ },
+ {
+  "find": "_compare(items, item, f\"{path}[]\", out)",
+  "replace": "pass",
+  "note": "list items never compared"
+ },
+ {
+  "find": "_compare([d[key] for d in dicts if key in d], fake[key], f\"{path}.{key}\", out)",
+  "replace": "pass",
+  "note": "nested fields never compared"
+ },
+ {
+  "find": "out.append(Difference(f\"{path}.{key}\", \"missing\", \"the real record always has it\"))",
+  "replace": "pass",
+  "note": "missing fields never reported"
+ }
+]

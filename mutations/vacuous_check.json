@@ -1,0 +1,32 @@
+[
+ {
+  "find": "if not ran & set(required):",
+  "replace": "if False:",
+  "note": "a required tool that never ran is not noticed"
+ },
+ {
+  "find": "ran = {t.name for t in result.tools if not t.refused}",
+  "replace": "ran = {t.name for t in result.tools}",
+  "note": "refused calls counted as reading the content"
+ },
+ {
+  "find": "if marker and tool_outputs is not None and not any(marker in out for out in tool_outputs):",
+  "replace": "if False:",
+  "note": "marker check skipped"
+ },
+ {
+  "find": "if marker and tool_outputs is not None and",
+  "replace": "if marker and tool_outputs and",
+  "note": "empty outputs treated as no outputs"
+ },
+ {
+  "find": "return \"held\" if reach.reached else \"inconclusive\"",
+  "replace": "return \"held\"",
+  "note": "unreached results reported as held"
+ },
+ {
+  "find": "if attack_succeeded:\n        return \"succeeded\"",
+  "replace": "if False:\n        return \"succeeded\"",
+  "note": "a success on an unreached test not reported"
+ }
+]
