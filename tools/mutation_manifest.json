@@ -1,0 +1,13 @@
+[
+  {"file": "agent-redteam-setup/scripts/agent_redteam/detectors/core.py", "mutations": "mutations/detectors_core.json", "tests": "tests/test_detectors.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/detectors/packs.py", "mutations": "mutations/detectors_packs.json", "tests": "tests/test_detectors.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/bridge.py", "mutations": "mutations/bridge.json", "tests": "tests/test_bridge.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/pricing.py", "mutations": "mutations/pricing.json", "tests": "tests/test_pricing.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/meter.py", "mutations": "mutations/meter.json", "tests": "tests/test_meter.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/preflight.py", "mutations": "mutations/preflight.json", "tests": "tests/test_preflight.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/estimate.py", "mutations": "mutations/estimate.json", "tests": "tests/test_estimate.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/shape_check.py", "mutations": "mutations/shape_check.json", "tests": "tests/test_shape_check.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/vacuous_check.py", "mutations": "mutations/vacuous_check.json", "tests": "tests/test_vacuous_check.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/overfit_check.py", "mutations": "mutations/overfit_check.json", "tests": "tests/test_overfit_check.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/summarize.py", "mutations": "mutations/summarize.json", "tests": "tests/test_summarize.py"}
+]
