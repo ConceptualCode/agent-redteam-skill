@@ -1,0 +1,62 @@
+[
+ {
+  "find": "names = list(mapping.get(plugin_id, []))",
+  "replace": "names = []",
+  "note": "exact plugin ids no longer mapped"
+ },
+ {
+  "find": "plugin_id.startswith(key[:-1]):",
+  "replace": "False:",
+  "note": "wildcard plugin ids no longer mapped"
+ },
+ {
+  "find": "names += [n for n in extra if n not in names]",
+  "replace": "names += extra",
+  "note": "duplicate detectors not removed"
+ },
+ {
+  "find": "replies = metadata.get(\"replies\") or output",
+  "replace": "replies = output",
+  "note": "multi-turn replies ignored"
+ },
+ {
+  "find": "if n in available]",
+  "replace": "]",
+  "note": "unavailable detectors crash instead of being skipped"
+ },
+ {
+  "find": "\"pass\": not reasons,",
+  "replace": "\"pass\": True,",
+  "note": "verdict always passes"
+ },
+ {
+  "find": "\"score\": 0 if reasons else 1",
+  "replace": "\"score\": 1 if reasons else 0",
+  "note": "score inverted"
+ },
+ {
+  "find": "metadata = response.get(\"metadata\") or context.get(\"metadata\") or {}",
+  "replace": "metadata = response.get(\"metadata\") or {}",
+  "note": "metadata shortcut ignored"
+ },
+ {
+  "find": "list(test_meta.get(\"detectors\") or [])",
+  "replace": "[]",
+  "note": "per-test detectors ignored"
+ },
+ {
+  "find": "if not config.get(\"context_file\"):",
+  "replace": "if False:",
+  "note": "missing context file not reported"
+ },
+ {
+  "find": "key = (str(p.resolve()), p.stat().st_mtime)",
+  "replace": "key = (str(p.resolve()), 0)",
+  "note": "context file never reloaded"
+ },
+ {
+  "find": "tuple(config.get(\"packs\", ()))",
+  "replace": "()",
+  "note": "packs from config ignored"
+ }
+]
