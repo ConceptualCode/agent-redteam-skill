@@ -21,7 +21,9 @@ an attack that never reached the target, a defence written in the test's own wor
 | `overfit_check.py` | finds wording a defence shares with the attacks it is scored on |
 | `summarize.py` | PromptFoo results to "x of N" per attack, controls apart, flaky labels, before and after |
 
-Python 3.9+, standard library only. PromptFoo (needs Node 22.22+) is optional and only used for the runner and viewer.
+Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
+results loader in `summarize.py` are written for it. The other scripts work without it. A plain-Python runner for hand-written
+attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
 ## Use
     export OPENAI_API_KEY=...                                   # in your own shell; never paste it anywhere
