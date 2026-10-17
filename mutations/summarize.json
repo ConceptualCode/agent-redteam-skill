@@ -1,0 +1,82 @@
+[
+ {
+  "find": "if from_var:\n        return str(from_var)",
+  "replace": "if False:\n        return str(from_var)",
+  "note": "attack_id var ignored"
+ },
+ {
+  "find": "return str(description).split(\" (\")[0] if description else f\"test-{index}\"",
+  "replace": "return str(description) if description else f\"test-{index}\"",
+  "note": "description suffix kept in the id"
+ },
+ {
+  "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
+  "replace": "if False:",
+  "note": "missing output not treated as an error"
+ },
+ {
+  "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
+  "replace": "if not response.get(\"output\"):",
+  "note": "metadata-only responses treated as errors"
+ },
+ {
+  "find": "held = rule[0] if rule else bool(r.get(\"success\"))",
+  "replace": "held = bool(r.get(\"success\"))",
+  "note": "our rule no longer decides"
+ },
+ {
+  "find": "disagrees = bool(rule and grader and rule[0] != grader[0])",
+  "replace": "disagrees = False",
+  "note": "disagreements never counted"
+ },
+ {
+  "find": "control = test_id.startswith(control_prefix) or bool(",
+  "replace": "control = bool(",
+  "note": "control prefix ignored"
+ },
+ {
+  "find": "or bool(((r.get(\"testCase\") or {}).get(\"metadata\") or {}).get(\"control\"))",
+  "replace": "",
+  "note": "control metadata flag ignored"
+ },
+ {
+  "find": "runs = sum(r.status != \"error\" for r in rs)",
+  "replace": "runs = len(rs)",
+  "note": "errors counted as runs"
+ },
+ {
+  "find": "\"flaky\": 0 < succeeded < runs",
+  "replace": "\"flaky\": succeeded < runs",
+  "note": "zero successes labelled flaky"
+ },
+ {
+  "find": "return sorted(rows, key=lambda row: (row[\"control\"], row[\"id\"]))",
+  "replace": "return sorted(rows, key=lambda row: row[\"id\"])",
+  "note": "controls not listed after attacks"
+ },
+ {
+  "find": "rate_x, rate_y = x[\"succeeded\"] / max(x[\"runs\"], 1), y[\"succeeded\"] / max(y[\"runs\"], 1)",
+  "replace": "rate_x, rate_y = x[\"succeeded\"], y[\"succeeded\"]",
+  "note": "compared by count, not rate"
+ },
+ {
+  "find": "(\"better\" if rate_y < rate_x else \"worse\")",
+  "replace": "(\"worse\" if rate_y < rate_x else \"better\")",
+  "note": "better and worse swapped"
+ },
+ {
+  "find": "change = \"new\" if x is None else \"gone\"",
+  "replace": "change = \"gone\" if x is None else \"new\"",
+  "note": "new and gone swapped"
+ },
+ {
+  "find": "raw.get(\"results\", []) if isinstance(raw, dict) else (raw or [])",
+  "replace": "raw.get(\"results\", [])",
+  "note": "plain results list not read"
+ },
+ {
+  "find": "return sorted(out, key=lambda row: (row[\"control\"], row[\"id\"]))",
+  "replace": "return sorted(out, key=lambda row: row[\"id\"])",
+  "note": "comparison does not list controls after attacks"
+ }
+]
