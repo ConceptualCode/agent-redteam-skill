@@ -1,0 +1,7 @@
+{
+  "name": "agent-redteam-skill-e2e",
+  "private": true,
+  "devDependencies": {
+    "promptfoo": "0.123.1"
+  }
+}
