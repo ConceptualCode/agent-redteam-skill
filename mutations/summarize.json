@@ -20,12 +20,17 @@
   "note": "metadata-only responses treated as errors"
  },
  {
-  "find": "held = rule[0] if rule else bool(r.get(\"success\"))",
+  "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
   "replace": "held = bool(r.get(\"success\"))",
   "note": "our rule no longer decides"
  },
  {
-  "find": "disagrees = bool(rule and grader and rule[0] != grader[0])",
+  "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
+  "replace": "held = any(rule) if rule else bool(r.get(\"success\"))",
+  "note": "one passing python assertion is enough, even if another failed"
+ },
+ {
+  "find": "disagrees = bool(rule and grader and held != grader[0])",
   "replace": "disagrees = False",
   "note": "disagreements never counted"
  },

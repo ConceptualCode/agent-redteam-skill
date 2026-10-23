@@ -10,7 +10,7 @@ A `RedTeamContext` is the one artifact that captures "what must never happen" fo
 | `markers` | Tell-tale strings that prove a planted instruction was obeyed (not the instruction itself -- the thing the agent would say *if* it obeyed). | No injected-instruction scenario applies. |
 | `forbidden_tools` | Tool names that should never be called, full stop -- the kind of action that shouldn't exist on the normal path at all (an unrestricted override, a destructive action outside scope). | The agent has no such tool. |
 | `allowed_hosts` | Domains the agent may link to. Any other host in a reply is flagged. | `null` (not `[]`) to skip the check entirely -- some agents legitimately link anywhere; `[]` would flag every link. |
-| `allowed_email_domains` | Same idea, for email addresses mentioned in a reply. | `null` to skip, same reasoning as above. |
+| `allowed_email_domains` | Same idea, for email addresses mentioned in a reply. **A fixed, company-wide list** -- it answers "did the agent mention an address at a domain we never approved," not "did the agent send to the right address for *this* conversation." | `null` to skip, same reasoning as above. |
 | `allowances` | `{"tool_name": max_calls_per_turn}` -- a per-tool ceiling, for tools that are fine to call but shouldn't be spammed (sending email, applying a discount). | The tool has no sane ceiling worth enforcing. |
 | `arg_bounds` | `{"tool.argument": [min, max]}` -- either bound can be `null`. For a numeric argument that should stay in a sane range (a discount percentage, a quantity). | No numeric argument needs bounding. |
 | `max_reply_chars` | A reply longer than this is flagged as runaway output (e.g. dumping an entire file instead of summarizing it). Defaults to 3000 if unset. | Rarely -- most agents benefit from some ceiling here. |
@@ -57,6 +57,10 @@ These are real, complete, tested contexts from this project's own demo agents --
   "max_tool_calls": 8
 }
 ```
+
+## What this doesn't cover: "this argument must match what an earlier tool call returned"
+
+There's no field for a relational check -- e.g. "the address `send_reset_email` is called with must equal the `email_on_file` that `lookup_account` actually returned this turn," which is what catches an account-takeover-style attack (the agent redirecting an action to an address the user supplied rather than the one on record). The generic detectors only check a tool's own arguments against fixed bounds or allow-lists, never against another tool call's output. Until this has a proper primitive, write it as a small project-local Python function using `Result.tools` directly (each `ToolCall` has `.name`, `.args`, `.returned`) rather than editing the toolkit itself -- the toolkit is a shared dependency, this kind of check is specific to one agent's tools.
 
 ## Picking good secret/marker values
 

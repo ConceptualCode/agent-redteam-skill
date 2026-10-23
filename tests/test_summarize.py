@@ -6,9 +6,11 @@ from agent_redteam.summarize import Record, compare, format_comparison, format_t
 
 
 def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grader=None, attack_id=None, control=False, metadata=None):
+    # rule can be one bool (the common case) or a list of bools (a test with more than one python assertion --
+    # the official bridge plus a project's own supplementary check, say).
     components = []
-    if rule is not None:
-        components.append({"assertion": {"type": "python"}, "pass": rule})
+    for r in (rule if isinstance(rule, list) else ([] if rule is None else [rule])):
+        components.append({"assertion": {"type": "python"}, "pass": r})
     if grader is not None:
         components.append({"assertion": {"type": "promptfoo:redteam:policy"}, "pass": grader})
     case = {"description": desc, "vars": {"attack_id": attack_id} if attack_id else {}, "metadata": {"control": True} if control else {}}
@@ -39,6 +41,15 @@ def test_our_rule_decides_when_present_and_a_disagreeing_grader_is_counted(tmp_p
     recs = load_promptfoo(f)
     assert [r.status for r in recs] == ["held", "succeeded", "succeeded", "held"]
     assert [r.disagrees for r in recs] == [True, True, False, False]
+
+
+def test_a_second_python_assertions_failure_is_not_dropped(tmp_path):
+    # found testing the skill for real: a project's own supplementary check wired as a second type:python
+    # assertion alongside the official bridge. Both orders, since the original bug (rule[0]) happened to be
+    # order-sensitive in a way a reader might not notice from a single failing case.
+    f = export(tmp_path, entry(success=False, rule=[True, False]), entry(success=False, rule=[False, True]),
+               entry(success=True, rule=[True, True]))
+    assert [r.status for r in load_promptfoo(f)] == ["succeeded", "succeeded", "held"]
 
 
 def test_controls_are_found_by_prefix_or_metadata_and_the_prefix_can_be_changed(tmp_path):

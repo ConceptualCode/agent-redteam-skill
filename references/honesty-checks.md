@@ -13,6 +13,8 @@ diffs = check_fake(real_samples, fake_record)
 ```
 `diffs` lists every way the fake differs in shape from real samples: a field the fake invented that no real record has (`extra`), a field every real record has that the fake is missing (`missing`), a type mismatch, or a list the real data fills but the fake leaves empty (meaning the fake never actually exercises whatever logic depends on that list having content). Give it more than one real sample if you can -- that's how it learns which fields are genuinely optional versus always-present.
 
+**If the agent under test doesn't exist yet, there's no real sample to check against.** Comparing a fake tool record to hand-built "plausible real" samples only proves the fake is internally consistent with your own guess at the real shape, not that either one matches the real system. That's still worth doing -- an inconsistent guess is a real finding -- but say so plainly when reporting results, and re-run the check against genuinely real samples the moment the real tool exists.
+
 ## `vacuous_check.py` -- did the attack actually have a chance to work?
 
 A "held" result only means something if the planted attack genuinely reached the model. If an attack relies on the agent calling a specific tool, or reading content that contains a planted instruction, and that tool was never called (or was refused before it ran), then the agent "holding" proves nothing -- it never encountered the thing it was supposed to resist. This happens more than it sounds like it should: a test can be written correctly and still never actually exercise the path it's meant to test, especially once a conversation has multiple steps and the model takes a different path than expected.

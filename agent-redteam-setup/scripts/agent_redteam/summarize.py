@@ -47,8 +47,12 @@ def load_promptfoo(path: str | Path, control_prefix: str = "ctl-") -> list[Recor
         components = (r.get("gradingResult") or {}).get("componentResults") or []
         rule = [c["pass"] for c in components if (c.get("assertion") or {}).get("type") == "python"]
         grader = [c["pass"] for c in components if (c.get("assertion") or {}).get("type") != "python"]
-        held = rule[0] if rule else bool(r.get("success"))
-        disagrees = bool(rule and grader and rule[0] != grader[0])
+        # every python assertion must pass, not just the first one -- a test can carry more than one (the official
+        # bridge plus a project's own supplementary check), and PromptFoo's own `success` already ANDs across all
+        # of them; taking rule[0] silently dropped a second check's failure from this table while leaving the raw
+        # results.json and PromptFoo's own grid correct, found testing the skill for real with exactly that setup.
+        held = all(rule) if rule else bool(r.get("success"))
+        disagrees = bool(rule and grader and held != grader[0])
         records.append(Record(test_id, "held" if held else "succeeded", control, disagrees))
     return records
 
