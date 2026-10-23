@@ -1,7 +1,8 @@
 # agent-redteam-skill
 
-Tools and a playbook for red-teaming an AI agent that has access to tools and data. Status: **M1 (core scripts) done; the skill's
-instructions (`SKILL.md`), a demo agent and the release steps are still to come.** Nothing here is published.
+Tools and a playbook for red-teaming an AI agent that has access to tools and data. Status: **M1 (core scripts), M2 (proof against
+real planted flaws, including an HTTP-transport variant) and M3 (`SKILL.md` + reference guides) done.** Still open: a RAG/memory
+demo variant, a real-API smoke test of the meter, licence and release. Nothing here is published. Start at `SKILL.md`.
 
 The aim: let a developer set up a red team for their own agent without stress. Deterministic rules decide whether an attack worked,
 a hard spend cap keeps the bill controlled, and a few checks stop a test from fooling you (a fake that does not match real data,
@@ -25,7 +26,15 @@ Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the r
 results loader in `summarize.py` are written for it. The other scripts work without it. A plain-Python runner for hand-written
 attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
+`demo/{shop,email,file}/` are scripted agents with real, working planted flaws (no model called, free to run) proving every one
+of the 9 generic detectors and all 3 `customer_agent` pack detectors actually catch something, not just pass their own unit
+tests -- each paired with controls proving the same detectors don't over-fire on ordinary behaviour. `demo/shop_http/` is the
+same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
+network hop. `tools/e2e/harness.py` is the shared machinery all of these (and the original bridge-wiring check) build on.
+
 ## Use
+Start at `SKILL.md` for the full workflow and the reasoning behind each step. The quick version:
+
     export OPENAI_API_KEY=...                                   # in your own shell; never paste it anywhere
     cd agent-redteam-setup/scripts
     python -m agent_redteam.preflight --promptfoo               # what is missing?
@@ -44,5 +53,5 @@ Have your provider return the reply as `output` and the tool calls as `metadata.
 Every module has tests that were mutation-checked; a mutation that survives meant a weak test and was fixed.
 
 ## Not done yet
-`SKILL.md` and the reference guides, a demo agent with planted flaws (the skill's own test), the HTTP/RAG/memory variants,
-a real-API smoke test of the meter, licence and release.
+A RAG/memory demo variant (shop/email/file and the HTTP transport are done), a real-API smoke test of the meter, licence and
+release. Also still open: public vs. private, the project's name, and which assistants/environments it explicitly targets.
