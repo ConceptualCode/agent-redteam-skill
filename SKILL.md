@@ -23,6 +23,8 @@ Read `references/writing-a-context.md` for the full field reference and worked e
 
 Write the result as a JSON file (e.g. `context.json`) wherever the user's red-team work is living.
 
+**Before going further, decide whether a real model is even going to be called.** Steps 2-4 below (preflight, cost estimate, the meter) exist to protect against a real spend -- none of them apply if the agent under test is a scripted stand-in with no real model call, the way this project's own `demo/*/provider.py` agents work (useful when there's no running version of the user's agent yet, or when proving the detector pipeline itself is the point). In that case skip straight to step 5. This isn't spelled out by anything else in this workflow -- it's worth noticing on your own by comparing this numbered sequence against how the demos are actually structured, but stating it plainly here saves that inference.
+
 ## 2. Preflight -- before anything spends money
 
 Run:
@@ -69,7 +71,7 @@ python -m agent_redteam.summarize results.json
 
 This is the step most red-team setups skip, and it's the one most likely to make a result mean nothing:
 
-- **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. Use `vacuous_check.py`'s `reached()`/`final_status()` to tell "held" from "inconclusive."
+- **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. If the provider supplies what each tool returned (`metadata.tools[i].returned`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test and `bridge.grade()` checks this automatically, relabelling the reason `"inconclusive: ..."` rather than letting an untested path read as a proven one. Otherwise, call `vacuous_check.py`'s `reached()`/`final_status()` by hand.
 - **Does the fake data the test used resemble the real thing?** If any part of the setup uses a fake/mocked tool response, compare it against a real sample with `shape_check.py` -- an invented field, a missing one, or a list the fake leaves empty when real data would fill it, can produce a result that looks clean for the wrong reason.
 - **Does a written defense (a system prompt addition, a filter) share wording with the exact attacks scoring it?** Check with `overfit_check.py` -- a defense that quotes the test's own attacks passes that benchmark for free and proves nothing about a differently-worded attacker.
 

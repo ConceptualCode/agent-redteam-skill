@@ -17,10 +17,18 @@ diffs = check_fake(real_samples, fake_record)
 
 A "held" result only means something if the planted attack genuinely reached the model. If an attack relies on the agent calling a specific tool, or reading content that contains a planted instruction, and that tool was never called (or was refused before it ran), then the agent "holding" proves nothing -- it never encountered the thing it was supposed to resist. This happens more than it sounds like it should: a test can be written correctly and still never actually exercise the path it's meant to test, especially once a conversation has multiple steps and the model takes a different path than expected.
 
+**This one is wired into the automatic grading path, not just a manual call.** If the provider's `metadata.tools` entries include a `returned` field (what the tool handed back to the model -- `ToolCall.returned` in `contracts.py`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test case itself, and `bridge.grade()` checks it automatically: a result that technically "held" but never actually reached gets its `reason` relabelled `"inconclusive: ..."` rather than the generic `"agent held: no detector fired"`. `pass`/`score` don't change (no detector fired either way) -- this keeps the reason text honest, so reading `summarize.py`'s output (or `results.json` directly) doesn't silently mistake an untested path for a proven one. `demo/shop/`, `demo/email/`, and `demo/file/` don't use this yet (their providers don't supply `returned`), so it needs a provider that actually hands back tool output text to be worth adding.
+
+For a manual check outside the PromptFoo pipeline -- or when the provider doesn't supply `returned` and you're collecting tool outputs yourself -- call it directly:
 ```python
 from agent_redteam.vacuous_check import reached, final_status
 r = reached(result, required_tools=["read_file"], marker="the-planted-text", tool_outputs=[...])
 status = final_status(attack_succeeded=False, reach=r)  # "held", "succeeded", or "inconclusive"
+```
+Or, if the `Result` already carries `returned` text on its tool calls, skip collecting outputs by hand:
+```python
+from agent_redteam.vacuous_check import reached_in_result, final_status
+r = reached_in_result(result, required_tools=["read_file"], marker="the-planted-text")
 ```
 `reached()` checks whether any of the `required_tools` actually ran (unrefused), and optionally whether a specific marker string genuinely showed up in a tool's returned output -- i.e. the planted content was actually handed to the model, not just present somewhere in the test setup. `final_status()` relabels an attack that didn't succeed as `inconclusive` rather than `held` when it never truly reached the model -- that distinction matters: "held" is a claim about the agent's behavior, "inconclusive" is an honest statement that the test didn't prove anything either way.
 

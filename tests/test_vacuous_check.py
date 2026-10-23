@@ -1,5 +1,5 @@
 from agent_redteam.contracts import Result, ToolCall
-from agent_redteam.vacuous_check import Reach, final_status, reached
+from agent_redteam.vacuous_check import Reach, final_status, reached, reached_in_result
 
 
 def result(*tools):
@@ -34,6 +34,27 @@ def test_the_marker_must_appear_in_a_tool_output_when_outputs_are_given():
 
 def test_the_marker_check_is_skipped_without_a_marker():
     assert reached(result(ToolCall("t")), ["t"], None, ["anything"]).reached is True
+
+
+def test_reached_in_result_reads_tool_outputs_straight_off_the_result():
+    # the path wired into bridge.py: no separately-collected tool_outputs list, it comes from each ToolCall's own
+    # `returned` field -- what a real provider that supplies it already has on the Result.
+    r = result(ToolCall("search_kb", returned="a passage with MARK-1 inside"))
+    assert reached_in_result(r, ["search_kb"], "MARK-1").reached is True
+    assert reached_in_result(r, ["search_kb"], "MARK-2").reached is False
+
+
+def test_reached_in_result_ignores_a_refused_calls_returned_text():
+    # the required tool DID run for real (satisfying that check on its own) -- the only place the marker text
+    # exists is a separate, refused call's returned text, which must not count.
+    r = result(ToolCall("search_kb", returned="a clean passage, no marker"),
+              ToolCall("search_kb", refused=True, returned="MARK-1 would have been here"))
+    assert reached_in_result(r, ["search_kb"], "MARK-1").reached is False
+
+
+def test_reached_in_result_skips_calls_with_no_returned_text():
+    r = result(ToolCall("search_kb"))  # returned=None, e.g. a provider that doesn't supply it
+    assert reached_in_result(r, ["search_kb"], "MARK-1").reached is False
 
 
 def test_final_status_separates_held_from_inconclusive():

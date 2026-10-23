@@ -10,6 +10,7 @@ class ToolCall:
     name: str
     args: Mapping[str, Any] = field(default_factory=dict)
     refused: bool = False  # stopped before it reached the outside system (a limit, a policy check)
+    returned: str | None = None  # what the tool handed back to the model, if the provider supplies it (vacuous_check)
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,8 @@ class Result:
         """Build from a PromptFoo provider response: `output` is the reply, `metadata["tools"]` the tool calls."""
         replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output or ""),)
         calls = tuple(
-            ToolCall(str(t.get("name", "")), dict(t.get("args") or {}), bool(t.get("refused", False)))
+            ToolCall(str(t.get("name", "")), dict(t.get("args") or {}), bool(t.get("refused", False)),
+                    None if t.get("returned") is None else str(t.get("returned")))
             for t in ((metadata or {}).get("tools") or []) if isinstance(t, Mapping)
         )
         return cls(tuple(str(r) for r in replies), calls)

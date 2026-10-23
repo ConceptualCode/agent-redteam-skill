@@ -58,5 +58,25 @@
   "find": "tuple(config.get(\"packs\", ()))",
   "replace": "()",
   "note": "packs from config ignored"
+ },
+ {
+  "find": "    if vacuous:\n        reach = reached_in_result",
+  "replace": "    if False:\n        reach = reached_in_result",
+  "note": "vacuous check never runs"
+ },
+ {
+  "find": "if final_status(bool(reasons), reach) == \"inconclusive\":",
+  "replace": "if True:",
+  "note": "every vacuous-checked result relabelled, even a genuine hold"
+ },
+ {
+  "find": "reason = f\"inconclusive: {reach.reason}\"",
+  "replace": "pass",
+  "note": "inconclusive result reported as a plain hold"
+ },
+ {
+  "find": "config.get(\"plugin_detectors\", DEFAULT_PLUGIN_DETECTORS), test_meta.get(\"vacuous_check\"))",
+  "replace": "config.get(\"plugin_detectors\", DEFAULT_PLUGIN_DETECTORS), None)",
+  "note": "a test's own vacuous_check config never reaches evaluate_test"
  }
 ]

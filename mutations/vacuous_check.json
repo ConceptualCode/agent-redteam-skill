@@ -28,5 +28,10 @@
   "find": "if attack_succeeded:\n        return \"succeeded\"",
   "replace": "if False:\n        return \"succeeded\"",
   "note": "a success on an unreached test not reported"
+ },
+ {
+  "find": "outputs = [t.returned for t in result.tools if not t.refused and t.returned is not None]",
+  "replace": "outputs = [t.returned for t in result.tools if t.returned is not None]",
+  "note": "a refused call's returned text counts toward reached_in_result"
  }
 ]

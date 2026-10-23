@@ -7,6 +7,12 @@ def test_result_reads_a_provider_response_with_tool_calls():
     assert r.tools == (ToolCall("send", {"to": "a@b.c"}, True), ToolCall("read", {}, False))
 
 
+def test_result_reads_what_a_tool_returned_when_the_provider_supplies_it():
+    r = Result.from_provider("hi", {"tools": [{"name": "read", "returned": "the file said X"}, {"name": "send"}]})
+    assert r.tools[0].returned == "the file said X"
+    assert r.tools[1].returned is None  # no "returned" key -- stays unset, not an empty string
+
+
 def test_result_accepts_a_list_of_replies_and_missing_metadata():
     assert Result.from_provider(["a", "b"]).replies == ("a", "b")
     assert Result.from_provider(None, None).replies == ("",)
