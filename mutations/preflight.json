@@ -30,6 +30,11 @@
   "note": "promptfoo checked outside promptfoo mode"
  },
  {
+  "find": "return any((d / \"node_modules\" / \".bin\" / \"promptfoo\").exists() for d in (here, *here.parents))",
+  "replace": "return (here / \"node_modules\" / \".bin\" / \"promptfoo\").exists()",
+  "note": "promptfoo not found from a subdirectory of where it was installed"
+ },
+ {
   "find": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var} is set\" if key else f\"{key_var} is not set\",",
   "replace": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var}={key}\" if key else f\"{key_var} is not set\",",
   "note": "key value printed"

@@ -63,6 +63,16 @@ def test_promptfoo_presence_is_checked_only_in_promptfoo_mode(tmp_path, monkeypa
     assert checks(promptfoo=True, which=lambda n: None)["promptfoo"].status == "ok"
 
 
+def test_promptfoo_is_found_from_a_subdirectory_of_where_it_was_installed(tmp_path, monkeypatch):
+    # found testing the skill for real: preflight run from scripts/ one level under where `npm install` put it
+    (tmp_path / "node_modules" / ".bin").mkdir(parents=True)
+    (tmp_path / "node_modules" / ".bin" / "promptfoo").write_text("")
+    deeper = tmp_path / "agent-redteam-setup" / "scripts"
+    deeper.mkdir(parents=True)
+    monkeypatch.chdir(deeper)
+    assert checks(promptfoo=True, which=lambda n: None)["promptfoo"].status == "ok"
+
+
 def test_models_must_be_priced_snapshots_resolve_and_each_model_gets_its_own_line():
     got = checks(models=["gpt-4.1-2025-04-14", "gpt-9"])
     assert got["price for gpt-4.1-2025-04-14"].status == "ok" and got["price for gpt-9"].status == "fail"

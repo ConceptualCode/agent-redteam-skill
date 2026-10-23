@@ -10,6 +10,7 @@ import subprocess
 import sys
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Mapping
 
 from .pricing import Prices
@@ -43,6 +44,15 @@ def _http_get(url: str) -> str:
         return resp.read().decode()
 
 
+def _find_local_promptfoo() -> bool:
+    """node_modules/.bin/promptfoo in the current directory or any parent -- mirrors how node/npm resolve a
+    locally installed binary. Without the parent walk, running preflight from a subdirectory of wherever
+    `npm install` actually put it (e.g. the scripts/ folder, one level under the repo root) gives a confident
+    "not found" even though it's installed -- found testing this skill for real, not a hypothetical."""
+    here = Path.cwd()
+    return any((d / "node_modules" / ".bin" / "promptfoo").exists() for d in (here, *here.parents))
+
+
 def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo: bool = False, meter_port: int = 8787,
                prices: Prices | None = None, key_var: str = "OPENAI_API_KEY", run: Callable = _run,
                http_get: Callable[[str], str] = _http_get, which: Callable = shutil.which,
@@ -60,8 +70,9 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
     else:
         out.append(Check("node", "ok", f"{node[0]}.{node[1]}"))
     if promptfoo:
-        found = which("promptfoo") or os.path.exists(os.path.join("node_modules", ".bin", "promptfoo"))
-        out.append(Check("promptfoo", "ok" if found else "fail", "installed" if found else "not found", "" if found else "npm install promptfoo (pin a version)"))
+        found = which("promptfoo") or _find_local_promptfoo()
+        out.append(Check("promptfoo", "ok" if found else "fail", "installed" if found else "not found",
+                         "" if found else "npm install promptfoo (pin a version) -- checked this directory and its parents"))
 
     key = env.get(key_var, "")
     out.append(Check("api key", "ok" if key else "fail", f"{key_var} is set" if key else f"{key_var} is not set",
