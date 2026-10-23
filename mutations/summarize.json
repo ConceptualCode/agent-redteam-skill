@@ -35,6 +35,26 @@
   "note": "disagreements never counted"
  },
  {
+  "find": "inconclusive = held and any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "replace": "inconclusive = any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "note": "a failed attack can be marked inconclusive too"
+ },
+ {
+  "find": "inconclusive = held and any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "replace": "inconclusive = held",
+  "note": "every held result marked inconclusive, not just ones that say so"
+ },
+ {
+  "find": "\"inconclusive\": sum(r.inconclusive for r in rs),",
+  "replace": "\"inconclusive\": 0,",
+  "note": "inconclusive count never reaches the table"
+ },
+ {
+  "find": "+ [f\" {r['inconclusive']} inconclusive (never reached)\"] * bool(r[\"inconclusive\"])",
+  "replace": "",
+  "note": "inconclusive count not shown in the formatted table"
+ },
+ {
   "find": "control = test_id.startswith(control_prefix) or bool(",
   "replace": "control = bool(",
   "note": "control prefix ignored"

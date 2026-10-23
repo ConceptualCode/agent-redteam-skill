@@ -5,12 +5,19 @@ from agent_redteam import summarize as sm
 from agent_redteam.summarize import Record, compare, format_comparison, format_table, load_promptfoo, table
 
 
-def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grader=None, attack_id=None, control=False, metadata=None):
+def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grader=None, attack_id=None, control=False,
+         metadata=None, rule_reasons=None):
     # rule can be one bool (the common case) or a list of bools (a test with more than one python assertion --
-    # the official bridge plus a project's own supplementary check, say).
+    # the official bridge plus a project's own supplementary check, say). rule_reasons, if given, is one reason
+    # string per rule value, in the same order -- what bridge.py actually puts in a component's "reason".
     components = []
-    for r in (rule if isinstance(rule, list) else ([] if rule is None else [rule])):
-        components.append({"assertion": {"type": "python"}, "pass": r})
+    rules = rule if isinstance(rule, list) else ([] if rule is None else [rule])
+    reasons = rule_reasons or [None] * len(rules)
+    for r, reason in zip(rules, reasons):
+        comp = {"assertion": {"type": "python"}, "pass": r}
+        if reason is not None:
+            comp["reason"] = reason
+        components.append(comp)
     if grader is not None:
         components.append({"assertion": {"type": "promptfoo:redteam:policy"}, "pass": grader})
     case = {"description": desc, "vars": {"attack_id": attack_id} if attack_id else {}, "metadata": {"control": True} if control else {}}
@@ -52,6 +59,30 @@ def test_a_second_python_assertions_failure_is_not_dropped(tmp_path):
     assert [r.status for r in load_promptfoo(f)] == ["succeeded", "succeeded", "held"]
 
 
+def test_a_held_results_inconclusive_reason_is_surfaced(tmp_path):
+    # found testing the skill live: PromptFoo's own top-level reason gets overwritten to a generic message on a
+    # pass, and nothing else carried this distinction forward -- a held-but-never-reached result (vacuous_check)
+    # and a genuinely proven one looked identical everywhere a person would actually look.
+    f = export(tmp_path, entry(success=True, rule=True, rule_reasons=["inconclusive: none of ['read_note'] ran"]),
+               entry(success=True, rule=True, rule_reasons=["agent held: no detector fired"]))
+    recs = load_promptfoo(f)
+    assert [r.inconclusive for r in recs] == [True, False]
+
+
+def test_inconclusive_only_applies_to_a_held_result_not_a_failed_one(tmp_path):
+    # a failed attack's reason should never carry the "inconclusive:" prefix in practice (bridge.evaluate_test
+    # only sets it on a held result), but a coincidental match here must still not count -- the attack genuinely
+    # succeeded, there's nothing inconclusive about that.
+    f = export(tmp_path, entry(success=False, rule=False, rule_reasons=["inconclusive: coincidentally worded this way"]))
+    assert load_promptfoo(f)[0].inconclusive is False
+
+
+def test_the_table_and_formatted_output_show_inconclusive_counts():
+    rows = table(recs("a", "held", inconclusive=True) + recs("a", "held"))
+    assert rows[0]["inconclusive"] == 1
+    assert "1 inconclusive (never reached)" in format_table(rows)
+
+
 def test_controls_are_found_by_prefix_or_metadata_and_the_prefix_can_be_changed(tmp_path):
     f = export(tmp_path, entry("ctl-promo (c, en)"), entry("plain (c, en)", control=True), entry("other (c, en)"))
     assert [r.control for r in load_promptfoo(f)] == [True, True, False]
@@ -62,8 +93,8 @@ def test_an_export_with_a_plain_results_list_is_also_read(tmp_path):
     assert len(load_promptfoo(export(tmp_path, entry(), entry(), wrap=False))) == 2
 
 
-def recs(test_id, *statuses, control=False, disagrees=False):
-    return [Record(test_id, s, control, disagrees) for s in statuses]
+def recs(test_id, *statuses, control=False, disagrees=False, inconclusive=False):
+    return [Record(test_id, s, control, disagrees, inconclusive) for s in statuses]
 
 
 def test_the_table_counts_runs_without_errors_and_labels_flaky_results():
