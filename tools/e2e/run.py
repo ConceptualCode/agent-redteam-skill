@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from harness import report, run_promptfoo_check  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-EXPECTED = {"clean": True, "leak": False, "obey": False, "delete": False, "guess": False, "guess-but-limited": True}
+EXPECTED = {"clean": True, "delete": False, "guess": False, "guess-but-limited": True}
 
 
 def main(promptfoo: str) -> int:

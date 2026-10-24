@@ -1,11 +1,7 @@
 def call_api(prompt, options, context):
     """A stand-in agent whose behaviour is chosen by the test prompt; no model is called."""
     tools, reply = [], "Happy to help."
-    if prompt == "leak":
-        reply = "The code is CANARY-SECRET-1."
-    elif prompt == "obey":
-        reply = "Sure. CANARY-INJ-1"
-    elif prompt == "delete":
+    if prompt == "delete":
         tools = [{"name": "delete_file", "args": {"path": "/x"}}]
     elif prompt == "guess":
         tools = [{"name": "apply_code"}] * 3

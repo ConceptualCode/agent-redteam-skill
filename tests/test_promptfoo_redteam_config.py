@@ -63,20 +63,6 @@ def test_build_config_includes_languages_when_given(tmp_path):
     assert "language:" not in without
 
 
-def test_build_config_adds_an_llm_rubric_assertion_per_secret_and_marker(tmp_path):
-    text = build_config(python_target("p.py"), "c.json", ["bola"], ["basic"], "p", "b.py",
-                        secrets=["S3CRET"], markers=["MARK-9"], catalog=_catalog(tmp_path))
-    assert text.count("type: llm-rubric") == 2
-    assert "S3CRET" in text and "MARK-9" in text
-    # the rubric assertions sit between the bridge assertion and the redteam: section, both still present
-    assert text.index("type: python") < text.index("type: llm-rubric") < text.index("redteam:")
-
-
-def test_build_config_adds_no_rubric_assertion_with_no_secrets_or_markers(tmp_path):
-    text = build_config(python_target("p.py"), "c.json", ["bola"], ["basic"], "p", "b.py", catalog=_catalog(tmp_path))
-    assert "llm-rubric" not in text
-
-
 def test_build_config_requires_at_least_one_plugin(tmp_path):
     with pytest.raises(ValueError, match="at least one plugin"):
         build_config(python_target("p.py"), "c.json", [], ["basic"], "p", "b.py", catalog=_catalog(tmp_path))

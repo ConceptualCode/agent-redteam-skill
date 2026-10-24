@@ -33,10 +33,5 @@
   "find": "lang_line = f\"\\n  language: [{', '.join(languages)}]\" if languages else \"\"",
   "replace": "lang_line = \"\"",
   "note": "chosen languages never reach the config"
- },
- {
-  "find": "rubric_yaml = \"\".join(f\"    - type: llm-rubric\\n      value: {json.dumps(a['value'])}\\n\"\n                          for a in llm_rubric.build_assertions(secrets, markers))",
-  "replace": "rubric_yaml = \"\"",
-  "note": "the llm-rubric second opinion is never added, even when secrets/markers are given"
  }
 ]

@@ -5,11 +5,13 @@ from agent_redteam import summarize as sm
 from agent_redteam.summarize import Record, compare, format_comparison, format_table, load_promptfoo, table
 
 
-def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grader=None, attack_id=None, control=False,
-         metadata=None, rule_reasons=None):
+def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grader=None, attack_id=None,
+         control=False, metadata=None, rule_reasons=None):
     # rule can be one bool (the common case) or a list of bools (a test with more than one python assertion --
     # the official bridge plus a project's own supplementary check, say). rule_reasons, if given, is one reason
-    # string per rule value, in the same order -- what bridge.py actually puts in a component's "reason".
+    # string per rule value, in the same order -- what bridge.py actually puts in a component's "reason". grader
+    # is PromptFoo's own plugin-specific grader(s) -- a second opinion only, never decisive, tracked as a
+    # disagreement when it differs. Accepts one bool or a list (more than one plugin grader at once).
     components = []
     rules = rule if isinstance(rule, list) else ([] if rule is None else [rule])
     reasons = rule_reasons or [None] * len(rules)
@@ -18,8 +20,9 @@ def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grade
         if reason is not None:
             comp["reason"] = reason
         components.append(comp)
-    if grader is not None:
-        components.append({"assertion": {"type": "promptfoo:redteam:policy"}, "pass": grader})
+    graders = grader if isinstance(grader, list) else ([] if grader is None else [grader])
+    for i, g in enumerate(graders):
+        components.append({"assertion": {"type": f"promptfoo:redteam:plugin-{i}"}, "pass": g})
     case = {"description": desc, "vars": {"attack_id": attack_id} if attack_id else {}, "metadata": {"control": True} if control else {}}
     response = {"output": output} if output is not None else ({"metadata": metadata} if metadata else {})
     return {"testCase": case, "success": success, "response": response, "gradingResult": {"componentResults": components}}
@@ -48,6 +51,14 @@ def test_our_rule_decides_when_present_and_a_disagreeing_grader_is_counted(tmp_p
     recs = load_promptfoo(f)
     assert [r.status for r in recs] == ["held", "succeeded", "succeeded", "held"]
     assert [r.disagrees for r in recs] == [True, True, False, False]
+
+
+def test_a_second_graders_disagreement_is_not_dropped(tmp_path):
+    # found testing the skill for real: a Path-A test can carry more than one PromptFoo plugin-specific grader at
+    # once. Both orders, since the original bug (grader[0]) was order-sensitive the same way rule[0] was.
+    f = export(tmp_path, entry(success=True, rule=True, grader=[True, False]), entry(success=True, rule=True, grader=[False, True]),
+               entry(success=True, rule=True, grader=[True, True]))
+    assert [r.disagrees for r in load_promptfoo(f)] == [True, True, False]
 
 
 def test_a_second_python_assertions_failure_is_not_dropped(tmp_path):

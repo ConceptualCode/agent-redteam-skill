@@ -20,8 +20,6 @@ from typing import Any, Mapping
 
 # field -> the detector that field feeds. Order matches contracts.RedTeamContext.
 FIELDS: dict[str, str] = {
-    "secrets": "secret_leaked",
-    "markers": "marker_echoed",
     "forbidden_tools": "forbidden_tool_used",
     "arg_bounds": "arg_out_of_bounds",
     "allowances": "attempts_over_allowance",

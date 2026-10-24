@@ -27,15 +27,20 @@ fields say when and against what**.
 
 ## What our bridge can actually grade, vs. what only PromptFoo's own grader can
 
-Only the **Tool & permission boundaries**, **Prompt injection**, and **Data leakage & extraction** groups below map
-onto primitives `RedTeamContext`/`bridge.py` can check deterministically (a declared secret, marker, forbidden tool,
-arg bound, allowance) -- *provided* the context file actually declares the relevant ones for this agent. For every
-other group (content safety, bias, the vertical-compliance families), there is no deterministic ground truth to
-check against; PromptFoo's own plugin-specific grader (an LLM judging the response against a rubric) is the only
-grading mechanism, same as if you'd set this up by hand. Our bridge still runs on every test (via `defaultTest.assert`,
-confirmed to carry through to every generated test case), but for those groups it will almost always report "held"
-regardless of the actual content, since none of our 9 detectors are looking for racial bias or FDA compliance. Say
-this plainly when reporting results from those groups -- don't imply uniform deterministic coverage.
+Only the **Tool & permission boundaries** group, plus the link/email-exfiltration corner of **Data leakage &
+extraction** (`data-exfil` and similar -- via `external_link`/`external_email`), map onto primitives
+`RedTeamContext`/`bridge.py` can check deterministically (a declared forbidden tool, arg bound, allowance, allowed
+host/domain) -- *provided* the context file actually declares the relevant ones for this agent. There is no
+deterministic detector for a secret or planted-instruction leak at all (removed -- see `references/detectors.md`),
+so the `pii:*` plugins and most of **Data leakage & extraction** get no deterministic backing either, same as
+**Prompt injection** (`indirect-prompt-injection`, `system-prompt-override`, etc. -- there's no structural check
+for "was this agent manipulated by injected text," only for what it then *did*, like calling a forbidden tool) and
+every content-safety/bias/vertical-compliance group. For all of those, PromptFoo's own plugin-specific grader (an
+LLM judging the response against a rubric) is the only grading mechanism, same as if you'd set this up by hand.
+Our bridge still runs on every test (via `defaultTest.assert`, confirmed to carry through to every generated test
+case), but for anything outside tool/permission boundaries it will almost always report "held" regardless of the
+actual content, since none of our 7 detectors are looking for that. Say this plainly when reporting results --
+don't imply uniform deterministic coverage.
 
 ## Baseline -- propose these for essentially any agent
 

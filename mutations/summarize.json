@@ -30,9 +30,14 @@
   "note": "one passing python assertion is enough, even if another failed"
  },
  {
-  "find": "disagrees = bool(rule and grader and held != grader[0])",
+  "find": "disagrees = bool(rule and grader and any(g != held for g in grader))",
   "replace": "disagrees = False",
   "note": "disagreements never counted"
+ },
+ {
+  "find": "any(g != held for g in grader)",
+  "replace": "held != grader[0]",
+  "note": "a second grader's disagreement dropped again"
  },
  {
   "find": "inconclusive = held and any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",

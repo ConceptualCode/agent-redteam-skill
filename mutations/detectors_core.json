@@ -1,20 +1,5 @@
 [
  {
-  "find": "if s and s.lower() in text]",
-  "replace": "if s and s in text]",
-  "note": "secret match no longer case-insensitive"
- },
- {
-  "find": "if s and s.lower() in text]",
-  "replace": "if s.lower() in text]",
-  "note": "empty secret now matches everything"
- },
- {
-  "find": "if m and m.lower() in text]",
-  "replace": "if m in text]",
-  "note": "marker match no longer case-insensitive"
- },
- {
   "find": "host == a or host.endswith(\".\" + a)",
   "replace": "host == a",
   "note": "subdomains no longer allowed"

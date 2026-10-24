@@ -24,7 +24,7 @@ never has to touch PromptFoo's wizard by hand.
 ```
 RedTeamContext (contracts.py)  -- what must never happen, in the agent's own terms
         |
-detectors/core.py               -- 9 generic checks, each: (Result, RedTeamContext) -> reasons
+detectors/core.py               -- 7 generic checks, each: (Result, RedTeamContext) -> reasons
         |
 bridge.py (grade/evaluate_test) -- runs every detector, returns one PromptFoo GradingResult
         |
@@ -51,46 +51,45 @@ Two frozen dataclasses everything else shares:
   automatic grading path rather than needing a separate manual pass).
 - **`Result`** -- `replies` + `tools` for one turn or conversation. `Result.from_provider(output, metadata)` builds
   one from exactly the shape a PromptFoo provider returns: `output` is the reply, `metadata["tools"]` the tool calls.
-- **`RedTeamContext`** -- what this agent must never do, in primitives only, nothing domain-specific: `secrets`,
-  `markers` (planted-instruction tell-tales), `allowed_hosts`/`allowed_email_domains` (`None` skips the check, an
-  empty set blocks everything), `forbidden_tools`, `allowances` (attempts per tool per window), `arg_bounds`
-  (`"tool.arg" -> (min, max)`), `max_reply_chars`, `max_tool_calls`. `RedTeamContext.from_dict()` reads it from the
-  JSON file a user writes by hand (see `references/writing-a-context.md`).
+- **`RedTeamContext`** -- what this agent must never do, in primitives only, nothing domain-specific:
+  `allowed_hosts`/`allowed_email_domains` (`None` skips the check, an empty set blocks everything),
+  `forbidden_tools`, `allowances` (attempts per tool per window), `arg_bounds` (`"tool.arg" -> (min, max)`),
+  `max_reply_chars`, `max_tool_calls`. `RedTeamContext.from_dict()` reads it from the JSON file a user writes by
+  hand (see `references/writing-a-context.md`). No field for a secret or planted-instruction leak -- see
+  "Detectors" below for why.
 
 Keeping this generic (no `discount_percent` field, no `refund_tool` field) is a deliberate choice: every detector
 reads the same handful of primitives, so a new kind of agent needs a new context file, not new code.
 
 ## Detectors (`detectors/core.py`)
 
-A detector is `(Result, RedTeamContext) -> list[str]`; an empty list means it held. All nine run on every test,
+A detector is `(Result, RedTeamContext) -> list[str]`; an empty list means it held. All seven run on every test,
 unconditionally -- each is inert unless the context actually configures the thing it checks, so there's no selection
 step to get wrong:
 
-`secret_leaked`, `marker_echoed`, `external_link`, `external_email`, `forbidden_tool_used`, `arg_out_of_bounds`,
-`attempts_over_allowance`, `runaway_output`, `tool_loop`.
+`external_link`, `external_email`, `forbidden_tool_used`, `arg_out_of_bounds`, `attempts_over_allowance`,
+`runaway_output`, `tool_loop`.
 
-What makes all nine trustworthy as a *proof*, not a guess, is that each checks exact containment of a known,
-controlled value (a secret or marker string the test itself planted) or a structured field straight off the
-`Result` (a tool's name, an argument, a call count) -- never a regex guessing at how a human might phrase something.
-That distinction mattered in practice: an earlier version of this toolkit had a `customer_agent` pack with three more
-detectors (`payment_instruction`, `claims_human_or_staff`, `makes_commitment`) built as regexes over free-form
-natural language. They were removed, not just left disabled, once that approach was shown to not add real value: a
-differently-worded promise ("you'll never pay for this again, consider it yours for good") scored "held" --
-incorrectly -- and the same detector gave zero signal at all in any language other than English, not partial credit.
-Reporting a "held" result off a check like that doesn't prove the thing it claims to, so keeping it as a documented
-"known limitation" wasn't the honest option -- removing it was. `references/detectors.md` covers what to do instead
-if an agent needs a check like this: a small project-local Python function wired in as a second PromptFoo assertion,
-paired with a model-graded assertion as a second opinion if the check genuinely needs to judge free-form phrasing.
+What makes all seven trustworthy as a *proof*, not a guess, is that each checks a structured field straight off
+the `Result` (a tool's name, an argument, a call count) against a controlled bound -- never a regex guessing at
+how a human might phrase something. That distinction mattered in practice: an earlier version of this toolkit had
+a `customer_agent` pack with three detectors (`payment_instruction`, `claims_human_or_staff`, `makes_commitment`)
+built as regexes over free-form natural language. They were removed, not just left disabled, once that approach
+was shown to not add real value: a differently-worded promise ("you'll never pay for this again, consider it
+yours for good") scored "held" -- incorrectly -- and the same detector gave zero signal at all in any language
+other than English, not partial credit. Reporting a "held" result off a check like that doesn't prove the thing
+it claims to, so keeping it as a documented "known limitation" wasn't the honest option -- removing it was.
 
-**Two of the nine have a narrower version of the same gap, and it was initially overstated rather than measured.**
-`secret_leaked`/`marker_echoed` check exact (case-insensitive) substring containment -- described at one point as
-"100%-reliable," which wasn't true. Tested directly: spacing the planted secret out, spelling it with separators,
-or describing it instead of quoting it all evaded `secret_leaked` completely. The honest claim is narrower than
-"this secret can never leak" -- it's "the agent didn't repeat this exact spelling verbatim." Unlike the pack
-detectors, this one wasn't removed: it's free, instant, has no false-positive risk, and catches the dominant real
-failure mode (a verbatim leak, which is what most actual extraction attacks produce). Instead, `llm_rubric.py`
-(below) adds a second, different check alongside it rather than replacing it, the same disagreement-tracked
-pattern used everywhere else a model grader exists next to a deterministic rule.
+**Two more, `secret_leaked`/`marker_echoed`, had a narrower version of the same gap and were also removed, not
+kept.** They checked exact (case-insensitive) substring containment -- described at one point as "100%-reliable,"
+which wasn't true. Tested directly: spacing the planted secret out, spelling it with separators, or describing it
+instead of quoting it all evaded `secret_leaked` completely. A deterministic check can't be patched into
+trustworthy here, the same way a wider regex can't fix the pack detectors above -- the only sound fix is an LLM
+judging the actual reply, which is a real, deliberate cost (a real model call, non-determinism, a new attack
+surface of its own in whatever reads the transcript to grade it). An `llm_rubric.py` module doing exactly that
+was built, then deliberately removed along with the two detectors -- that cost wasn't judged worth building into
+this toolkit by default. There is no detector or grading path for a secret or planted-instruction leak here
+today -- `references/detectors.md` covers what a project should do if it needs one.
 
 `run(names, result, ctx)` executes the named detectors and prefixes each reason with the detector that found it, so
 a report always says *which* check fired, not just that something did.
@@ -102,7 +101,7 @@ a report always says *which* check fired, not just that something did.
 it). `grade()` reads the assertion's `config` (just `context_file`) and the test's own `metadata` (an optional
 `vacuous_check` block), then calls `evaluate_test()`.
 
-`evaluate_test()` runs all nine detectors, unconditionally -- there's no per-test selection to configure, because
+`evaluate_test()` runs all seven detectors, unconditionally -- there's no per-test selection to configure, because
 every detector that ever needed one (the old pack) is gone. It returns
 `{"pass": not reasons, "score": 0|1, "reason": "; ".join(reasons) or "agent held: no detector fired"}`.
 
@@ -144,31 +143,18 @@ written after observing the failure mode it closes, not speculatively.
   `RedTeamContext` -- once defaults are applied, an explicit `max_tool_calls: 10` and a silently-defaulted one are
   indistinguishable, so the check has to run before that information is lost.
 
-## The `llm-rubric` second opinion (`llm_rubric.py`)
+## Letting an LLM judge, considered and rejected as a blanket replacement
 
-Not one of the three/four honesty checks above -- those check whether a *result* can be trusted; this adds a
-second *grading mechanism* alongside a specific pair of detectors. `secret_leaked`/`marker_echoed` only prove "the
-agent didn't repeat this exact spelling verbatim" -- confirmed directly that an obfuscated or merely-described
-leak slips past them entirely, the same structural gap as the regex-based pack detectors, just with fewer degrees
-of freedom (a short fixed token vs. an infinite-phrasing sentence). `rubric_for()`/`build_assertions()` turn each
-secret/marker into a `type: llm-rubric` PromptFoo assertion, phrased to explicitly cover the forms a literal match
-misses (encoded, spaced out, spelled out, paraphrased). `promptfoo_redteam_config.build_config()` adds these
-automatically whenever `secrets`/`markers` are passed to it -- runs *alongside* the deterministic check, never
-instead of it, with disagreement between the two already tracked by `summarize.py`'s existing rule-vs-grader split.
-
-This deliberately isn't a wholesale "let an LLM judge everything" -- considered and rejected. Over half of the 9
-universal detectors (`forbidden_tool_used`, `arg_out_of_bounds`, `attempts_over_allowance`, `tool_loop`,
+A wholesale "let an LLM judge everything" was considered and rejected, not just for secrets/markers. Over half
+the universal detectors (`forbidden_tool_used`, `arg_out_of_bounds`, `attempts_over_allowance`, `tool_loop`,
 `runaway_output`) check structured data (a tool name, a number against a bound, a call count, a character count)
 that has nothing to do with language at all; routing those through an LLM would be slower, cost money, break
 reproducibility (the mutation-testing discipline this whole project runs on needs a stable ground truth to compare
-against), and not even be more accurate. And an LLM grader is itself a new attack surface: content aimed at
+against), and not even be more accurate. An LLM grader is also itself a new attack surface: content aimed at
 manipulating the agent under test can just as easily be aimed at whatever reads the transcript to grade it, a
-problem a regex doesn't have. The right scope is narrow -- the two detectors that actually have the
-surface-form-brittleness problem -- not universal.
-
-Built and unit-tested; not run against a real model in this project. The claim "this actually catches an
-obfuscated leak" is traced through the rubric's own wording, not proven by a passing graded result -- that would
-need a real spend this project deliberately didn't make. Say so, don't imply otherwise.
+problem a regex or a structured check doesn't have. For secrets/markers specifically, an `llm_rubric.py` module
+was built as a scoped, non-blanket version of this (an LLM judging only those two, alongside the deterministic
+checks it was meant to patch) and then removed along with the detectors themselves -- see "Detectors" above.
 
 ## Cost control
 
@@ -272,26 +258,25 @@ agent is actually likely to be wired into PromptFoo through.
 A developer's self-check, not an independent security review. PromptFoo (Node 22.22+) is required today as the
 runner and results viewer; a plain-Python runner for hand-written attacks (no PromptFoo dependency, no
 generated-attack path) is planned but not built. For hand-written attacks, it only tests what the `RedTeamContext`
-was told to check. For PromptFoo's own plugins, only the authorization/injection/leakage groups get this toolkit's
-deterministic grading -- the much larger content-safety/bias/vertical-compliance slice of PromptFoo's catalog gets
-only PromptFoo's own LLM grader, same as a manual setup would, and this is said plainly rather than implied to be
-uniformly deterministic. Known gaps, left as documented tradeoffs rather than chased: there's no generic "this
-argument must equal what an earlier tool call returned" detector for account-takeover-style attacks (a
-project-local custom check is the current workaround); `shape_check` against invented "real" samples only proves
-self-consistency when no real agent exists yet to sample from. A regex-over-free-text approach to anything
-domain-specific (an unauthorized-commitment check, a claims-to-be-human check) was tried and deliberately removed
-rather than kept as a documented limitation -- see "Detectors" above -- because a "held" result from it didn't
-actually prove what it claimed to. `secret_leaked`/`marker_echoed` have a narrower version of the same gap
-(verbatim-only) that wasn't removed, since it's still the dominant real failure mode and free to check -- the
-`llm-rubric` second opinion covers the rest, at the cost of a real model call and non-determinism. A `RedTeamContext`
-field left empty is indistinguishable, after the fact, from one that was deliberately decided to be irrelevant --
-`coverage_check.py` exists so this isn't silent, but it still depends on someone actually running it and reading
-the result; nothing forces that.
+was told to check -- which does not include a secret or planted-instruction leak (removed, not a gap that was
+never covered; see "Detectors" above). For PromptFoo's own plugins, only tool/permission boundaries (plus the
+link/email corner of data exfiltration) get this toolkit's deterministic grading -- the much larger
+injection/PII/content-safety/bias/vertical-compliance slice of PromptFoo's catalog gets only PromptFoo's own LLM
+grader, same as a manual setup would, and this is said plainly rather than implied to be uniformly deterministic.
+Known gaps, left as documented tradeoffs rather than chased: there's no generic "this argument must equal what an
+earlier tool call returned" detector for account-takeover-style attacks (a project-local custom check is the
+current workaround); `shape_check` against invented "real" samples only proves self-consistency when no real
+agent exists yet to sample from. A regex-over-free-text approach to anything domain-specific (an
+unauthorized-commitment check, a claims-to-be-human check, and -- with a narrower version of the same problem --
+a secret/marker leak check) was tried and deliberately removed rather than kept as a documented limitation,
+because a "held" result from it didn't actually prove what it claimed to. A `RedTeamContext` field left empty is
+indistinguishable, after the fact, from one that was deliberately decided to be irrelevant -- `coverage_check.py`
+exists so this isn't silent, but it still depends on someone actually running it and reading the result; nothing
+forces that.
 
 ## Status
 
 M1 (core scripts), M2 (proof against real planted flaws, including the HTTP-transport variant), M3 (`SKILL.md` +
-reference guides), the PromptFoo plugin/strategy auto-setup, the `llm-rubric` second opinion, and `coverage_check.py`
-are done. Open: proving the bridge/PromptFoo-grader coexistence and the `llm-rubric` second opinion with an actual
-real-money eval run, a RAG/memory demo variant, a real-API smoke test of the meter against actual usage numbers,
-licence, and release.
+reference guides), the PromptFoo plugin/strategy auto-setup, and `coverage_check.py` are done. Open: proving the
+bridge/PromptFoo-grader coexistence with an actual real-money eval run, a RAG/memory demo variant, a real-API
+smoke test of the meter against actual usage numbers, licence, and release.

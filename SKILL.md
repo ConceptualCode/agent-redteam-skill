@@ -17,7 +17,7 @@ Don't over-ask if the user already described their agent -- extract what you can
 
 ## 1. Write a RedTeamContext
 
-This is the one artifact that captures "what must never happen," in the agent's own terms -- not domain-specific, just the primitives: secrets that must never leak, markers that reveal a planted instruction was obeyed, hosts/email domains it should never reach outside of, tools it should never call, per-tool attempt allowances, numeric argument bounds, reply-length and tool-call ceilings.
+This is the one artifact that captures "what must never happen," in the agent's own terms -- not domain-specific, just the primitives: hosts/email domains it should never reach outside of, tools it should never call, per-tool attempt allowances, numeric argument bounds, reply-length and tool-call ceilings. There's no field for a secret or planted-instruction leak -- see `references/writing-a-context.md`'s "What this doesn't cover."
 
 Read `references/writing-a-context.md` for the full field reference and worked examples -- `demo/shop/context.json`, `demo/email/context.json`, and `demo/file/context.json` are three real, complete contexts for different kinds of agents (a shop assistant, an email assistant, a file-access assistant); use whichever is closest to the user's agent as a starting template rather than writing one from nothing.
 
@@ -85,24 +85,21 @@ developer shouldn't have to go set PromptFoo up by hand and pick plugins off a c
   almost every plugin except the dataset-backed ones (`aegis`, `beavertails`, `harmbench`, etc. -- see the
   reference doc's "Dataset plugins" section), which generate for free but still cost a real grading call per test.
 5. **Write the config**: `promptfoo_redteam_config.build_config(target, context_file, plugins, strategies, purpose,
-  bridge_path, num_tests, languages, secrets=ctx.secrets, markers=ctx.markers)` returns the full
-  `promptfooconfig.yaml` text -- `target` is `python_target("provider.py")` or `http_target("https://...")`, the
-  same two shapes `tools/e2e/harness.py` already proves. It wires `defaultTest.assert` to the bridge automatically,
-  so our deterministic check runs alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
-  Always pass `secrets`/`markers` when the context has them: `build_config()` then adds an `llm-rubric`
-  second-opinion assertion per value automatically (see `references/honesty-checks.md`) -- `secret_leaked`/
-  `marker_echoed` only catch a verbatim match, and a spaced-out, encoded, or merely-described (not quoted) leak
-  slips straight past them (confirmed directly, not assumed). Tell the developer this costs a real grading call
-  per test and is itself non-deterministic -- it's a second opinion, not a replacement for the deterministic check.
+  bridge_path, num_tests, languages)` returns the full `promptfooconfig.yaml` text -- `target` is
+  `python_target("provider.py")` or `http_target("https://...")`, the same two shapes `tools/e2e/harness.py`
+  already proves. It wires `defaultTest.assert` to the bridge automatically, so our deterministic check runs
+  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
 6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`. Set `CI=true` in the environment first --
   PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
   non-interactive run and skips it, the same env var any CI system sets). Don't fabricate a developer's email to
   get past this some other way -- `CI=true` is the real, sanctioned path.
-7. **Say plainly what's deterministic and what isn't**: only the tool/permission, injection, and leakage groups
-  map onto anything our bridge can check. For every other group (content safety, bias, vertical compliance),
-  PromptFoo's own plugin-specific grader -- an LLM judging the response -- is the only grading mechanism, same as
-  a manual PromptFoo setup. Don't imply uniform deterministic coverage across a plugin set that spans both kinds.
+7. **Say plainly what's deterministic and what isn't**: only tool/permission boundaries, plus the link/email
+  corner of data exfiltration, map onto anything our bridge can check -- see
+  `references/promptfoo-plugins-strategies.md`'s "What our bridge can actually grade" section for exactly which
+  groups. For everything else (injection, PII, content safety, bias, vertical compliance), PromptFoo's own
+  plugin-specific grader -- an LLM judging the response -- is the only grading mechanism, same as a manual
+  PromptFoo setup. Don't imply uniform deterministic coverage across a plugin set that spans both kinds.
 
 ### Path B -- hand-written attacks against the real agent
 
@@ -112,11 +109,10 @@ pattern (a test per planted scenario, described in `assert_bridge.py`'s config).
 `value: file://.../agent-redteam-setup/scripts/assert_bridge.py` with `config: {context_file: <path>}`.
 `references/detectors.md` lists every detector and the exact wording/shape each needs to trigger.
 
-If the agent needs a check none of the 9 generic detectors cover -- something specific to its own domain -- write
-it as a small project-local Python function and wire it in as a second `type: python` PromptFoo assertion
-alongside the bridge, rather than trying to force it into this shared toolkit. If the context has secrets or
-markers, also add `llm_rubric.build_assertions(ctx.secrets, ctx.markers)` to the test's `assert` list the same
-way Path A does -- the verbatim-only gap in `secret_leaked`/`marker_echoed` applies here too.
+If the agent needs a check none of the 7 generic detectors cover -- something specific to its own domain, or a
+secret/planted-instruction leak (there is no deterministic detector for either, see `references/detectors.md`) --
+write it as a small project-local Python function and wire it in as a second `type: python` PromptFoo assertion
+alongside the bridge, rather than trying to force it into this shared toolkit.
 
 ## 6. Run it, then read the real results, not just pass/fail
 
@@ -154,4 +150,4 @@ This is a developer self-check, not a substitute for an independent security rev
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
-- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`, with a real example of each one catching something, plus when to add the `llm-rubric` second opinion.
+- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`, with a real example of each one catching something.

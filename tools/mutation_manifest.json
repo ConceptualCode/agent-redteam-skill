@@ -4,7 +4,6 @@
   {"file": "agent-redteam-setup/scripts/agent_redteam/bridge.py", "mutations": "mutations/bridge.json", "tests": "tests/test_bridge.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/promptfoo_catalog.py", "mutations": "mutations/promptfoo_catalog.json", "tests": "tests/test_promptfoo_catalog.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/promptfoo_redteam_config.py", "mutations": "mutations/promptfoo_redteam_config.json", "tests": "tests/test_promptfoo_redteam_config.py"},
-  {"file": "agent-redteam-setup/scripts/agent_redteam/llm_rubric.py", "mutations": "mutations/llm_rubric.json", "tests": "tests/test_llm_rubric.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/coverage_check.py", "mutations": "mutations/coverage_check.json", "tests": "tests/test_coverage_check.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/pricing.py", "mutations": "mutations/pricing.json", "tests": "tests/test_pricing.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/meter.py", "mutations": "mutations/meter.json", "tests": "tests/test_meter.py"},

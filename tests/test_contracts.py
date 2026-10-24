@@ -20,6 +20,6 @@ def test_result_accepts_a_list_of_replies_and_missing_metadata():
 
 
 def test_context_from_dict_applies_defaults_and_converts_types():
-    c = RedTeamContext.from_dict({"secrets": ["S1"], "allowed_hosts": ["ok.example"], "arg_bounds": {"add.qty": [1, 50]}})
-    assert c.secrets == ("S1",) and c.allowed_hosts == frozenset({"ok.example"}) and c.allowed_email_domains is None
+    c = RedTeamContext.from_dict({"allowed_hosts": ["ok.example"], "arg_bounds": {"add.qty": [1, 50]}})
+    assert c.allowed_hosts == frozenset({"ok.example"}) and c.allowed_email_domains is None
     assert c.arg_bounds == {"add.qty": (1, 50)} and c.max_reply_chars == 3000 and c.max_tool_calls == 10

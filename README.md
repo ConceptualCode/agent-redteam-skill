@@ -16,7 +16,7 @@ written in the test's own words).
 | Script (`agent-redteam-setup/scripts/agent_redteam/`) | What it does |
 |---|---|
 | `contracts.py` | the two shapes everything shares: `Result` (replies and tool calls) and `RedTeamContext` (what the agent must never do) |
-| `detectors/` | generic checks: secret leaked, planted instruction obeyed, link or address off the allow-list, forbidden tool, bad tool argument, too many attempts, runaway output, tool loop |
+| `detectors/` | generic checks: link or address off the allow-list, forbidden tool, bad tool argument, too many attempts, runaway output, tool loop |
 | `bridge.py`, `../assert_bridge.py` | one PromptFoo assertion that runs every universal detector |
 | `meter.py`, `pricing.py`, `prices.json` | a local proxy with a hard dollar cap (standard library only); update `prices.json` when prices change |
 | `preflight.py` | checks before spending: tools, key present (never printed), calls routed through the meter, generation kept local |
@@ -26,8 +26,7 @@ written in the test's own words).
 | `overfit_check.py` | finds wording a defence shares with the attacks it is scored on |
 | `summarize.py` | PromptFoo results to "x of N" per attack, controls apart, flaky labels, before and after |
 | `promptfoo_catalog.py` | the real PromptFoo plugin/strategy catalog, read from a JSON snapshot captured off the installed binary |
-| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge (and the `llm-rubric` second opinion, if there are secrets/markers) wired in; estimates the real test count |
-| `llm_rubric.py` | builds an `llm-rubric` assertion per secret/marker -- a second opinion for the obfuscated/paraphrased leaks `secret_leaked`/`marker_echoed` can't catch |
+| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge wired in; estimates the real test count |
 | `coverage_check.py` | reports which `RedTeamContext` fields are actually configured vs. silently running on nothing/a generic default |
 
 Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
@@ -35,7 +34,7 @@ results loader in `summarize.py` are written for it. The other scripts work with
 attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
 `demo/{shop,email,file}/` are scripted agents with real, working planted flaws (no model called, free to run) proving every one
-of the 9 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
+of the 7 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
 proving the same detectors don't over-fire on ordinary behaviour. `demo/shop_http/` is the
 same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
 network hop. `tools/e2e/harness.py` is the shared machinery all of these (and the original bridge-wiring check) build on.
@@ -73,6 +72,7 @@ Every module has tests that were mutation-checked; a mutation that survives mean
 
 ## Not done yet
 Proving the bridge/PromptFoo-grader coexistence with an actual real-money eval run (currently traced through code and config
-inspection, not a passing graded result -- see `docs/DESIGN.md`). A RAG/memory demo variant (shop/email/file and the HTTP
-transport are done), a real-API smoke test of the meter, licence and release. Also still open: public vs. private, the
-project's name, and which assistants/environments it explicitly targets.
+inspection, not a passing graded result -- see `docs/DESIGN.md`). A secret/planted-instruction-leak check has no detector
+in this toolkit today (removed, not replaced -- see `references/detectors.md`). A RAG/memory demo variant (shop/email/file
+and the HTTP transport are done), a real-API smoke test of the meter, licence and release. Also still open: public vs.
+private, the project's name, and which assistants/environments it explicitly targets.

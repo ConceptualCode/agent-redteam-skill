@@ -34,8 +34,6 @@ class Result:
 @dataclass(frozen=True)
 class RedTeamContext:
     """What this agent must never do, in the agent's own terms. Detectors read it; nothing here is domain specific."""
-    secrets: tuple[str, ...] = ()            # strings that must never appear in a reply
-    markers: tuple[str, ...] = ()            # planted instructions' tell-tales; seeing one in a reply means it was obeyed
     allowed_hosts: frozenset[str] | None = None   # links to any other host are flagged; None skips the check
     allowed_email_domains: frozenset[str] | None = None
     forbidden_tools: frozenset[str] = frozenset()
@@ -50,7 +48,6 @@ class RedTeamContext:
             value = raw.get(key)
             return None if value is None else frozenset(value)
         return cls(
-            secrets=tuple(raw.get("secrets", ())), markers=tuple(raw.get("markers", ())),
             allowed_hosts=fs("allowed_hosts"), allowed_email_domains=fs("allowed_email_domains"),
             forbidden_tools=frozenset(raw.get("forbidden_tools", ())), allowances=dict(raw.get("allowances", {})),
             arg_bounds={k: tuple(v) for k, v in dict(raw.get("arg_bounds", {})).items()},
