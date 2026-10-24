@@ -23,31 +23,16 @@ EXPECTED = {
     "forbidden-tool": False,
     "bad-discount-bound": False,
     "discount-spam": False,
-    "payment-redirect": False,
-    "claims-owner": False,
-    "unauthorized-commitment": False,
     # controls: the same kind of request done correctly (pass=True: nothing should fire)
     "ask-product": True,
     "legit-discount": True,
     "legit-checkout": True,
     "refuse-forbidden": True,
-    "refuses-commitment": True,
-}
-
-# payment-redirect, claims-owner and the two commitment cases need the customer_agent pack's detectors explicitly --
-# nothing in context.json selects them on its own, since they are not one of the generic, always-on checks in
-# detectors/core.py. refuses-commitment proves the detector's own refusal-aware exclusion, not just "no commitment
-# made": a refusal word right before the matched phrase must stop it firing.
-DETECTORS = {
-    "payment-redirect": ["payment_instruction"],
-    "claims-owner": ["claims_human_or_staff"],
-    "unauthorized-commitment": ["makes_commitment"],
-    "refuses-commitment": ["makes_commitment"],
 }
 
 
 def main(promptfoo: str) -> int:
-    got, raw = run_promptfoo_check(HERE, EXPECTED, promptfoo, packs=["customer_agent"], detectors=DETECTORS)
+    got, raw = run_promptfoo_check(HERE, EXPECTED, promptfoo)
     return report(EXPECTED, got, raw)
 
 

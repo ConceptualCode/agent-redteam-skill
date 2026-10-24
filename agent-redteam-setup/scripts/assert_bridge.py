@@ -1,4 +1,4 @@
-"""PromptFoo assertion entry point: `value: file://.../assert_bridge.py` with `config: {context_file: ..., packs: [...]}`."""
+"""PromptFoo assertion entry point: `value: file://.../assert_bridge.py` with `config: {context_file: ...}`."""
 import sys
 from pathlib import Path
 

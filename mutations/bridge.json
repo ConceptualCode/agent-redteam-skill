@@ -1,28 +1,8 @@
 [
  {
-  "find": "names = list(mapping.get(plugin_id, []))",
-  "replace": "names = []",
-  "note": "exact plugin ids no longer mapped"
- },
- {
-  "find": "plugin_id.startswith(key[:-1]):",
-  "replace": "False:",
-  "note": "wildcard plugin ids no longer mapped"
- },
- {
-  "find": "names += [n for n in extra if n not in names]",
-  "replace": "names += extra",
-  "note": "duplicate detectors not removed"
- },
- {
   "find": "replies = metadata.get(\"replies\") or output",
   "replace": "replies = output",
   "note": "multi-turn replies ignored"
- },
- {
-  "find": "if n in available]",
-  "replace": "]",
-  "note": "unavailable detectors crash instead of being skipped"
  },
  {
   "find": "\"pass\": not reasons,",
@@ -40,11 +20,6 @@
   "note": "metadata shortcut ignored"
  },
  {
-  "find": "list(test_meta.get(\"detectors\") or [])",
-  "replace": "[]",
-  "note": "per-test detectors ignored"
- },
- {
   "find": "if not config.get(\"context_file\"):",
   "replace": "if False:",
   "note": "missing context file not reported"
@@ -53,11 +28,6 @@
   "find": "key = (str(p.resolve()), p.stat().st_mtime)",
   "replace": "key = (str(p.resolve()), 0)",
   "note": "context file never reloaded"
- },
- {
-  "find": "tuple(config.get(\"packs\", ()))",
-  "replace": "()",
-  "note": "packs from config ignored"
  },
  {
   "find": "    if vacuous:\n        reach = reached_in_result",
@@ -75,8 +45,8 @@
   "note": "inconclusive result reported as a plain hold"
  },
  {
-  "find": "config.get(\"plugin_detectors\", DEFAULT_PLUGIN_DETECTORS), test_meta.get(\"vacuous_check\"))",
-  "replace": "config.get(\"plugin_detectors\", DEFAULT_PLUGIN_DETECTORS), None)",
+  "find": "load_context(config[\"context_file\"]), test_meta.get(\"vacuous_check\"))",
+  "replace": "load_context(config[\"context_file\"]), None)",
   "note": "a test's own vacuous_check config never reaches evaluate_test"
  }
 ]

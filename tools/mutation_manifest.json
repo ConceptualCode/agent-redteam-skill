@@ -1,8 +1,9 @@
 [
   {"file": "agent-redteam-setup/scripts/agent_redteam/contracts.py", "mutations": "mutations/contracts.json", "tests": "tests/test_contracts.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/detectors/core.py", "mutations": "mutations/detectors_core.json", "tests": "tests/test_detectors.py"},
-  {"file": "agent-redteam-setup/scripts/agent_redteam/detectors/packs.py", "mutations": "mutations/detectors_packs.json", "tests": "tests/test_detectors.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/bridge.py", "mutations": "mutations/bridge.json", "tests": "tests/test_bridge.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/promptfoo_catalog.py", "mutations": "mutations/promptfoo_catalog.json", "tests": "tests/test_promptfoo_catalog.py"},
+  {"file": "agent-redteam-setup/scripts/agent_redteam/promptfoo_redteam_config.py", "mutations": "mutations/promptfoo_redteam_config.json", "tests": "tests/test_promptfoo_redteam_config.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/pricing.py", "mutations": "mutations/pricing.json", "tests": "tests/test_pricing.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/meter.py", "mutations": "mutations/meter.json", "tests": "tests/test_meter.py"},
   {"file": "agent-redteam-setup/scripts/agent_redteam/preflight.py", "mutations": "mutations/preflight.json", "tests": "tests/test_preflight.py"},

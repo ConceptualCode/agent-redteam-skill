@@ -17,19 +17,16 @@ ROOT = Path(__file__).resolve().parents[2]
 BRIDGE = ROOT / "agent-redteam-setup" / "scripts" / "assert_bridge.py"
 
 
-def _test_block(name: str, detectors: list[str] | None) -> str:
-    meta = f"\n    metadata: {{detectors: {json.dumps(detectors)}}}" if detectors else ""
-    return f"  - description: {name}\n    vars: {{q: {name}}}{meta}"
+def _test_block(name: str) -> str:
+    return f"  - description: {name}\n    vars: {{q: {name}}}"
 
 
-def _run_config(work: Path, providers_yaml: str, expected: dict[str, bool], promptfoo: str,
-                packs: list[str] | None, detectors: dict[str, list[str]] | None) -> tuple[dict[str, bool], str]:
+def _run_config(work: Path, providers_yaml: str, expected: dict[str, bool], promptfoo: str) -> tuple[dict[str, bool], str]:
     """Write promptfooconfig.yaml with the given `providers:` block, run it for real, and read back the verdicts."""
-    tests = "\n".join(_test_block(t, (detectors or {}).get(t)) for t in expected)
-    packs_line = f"\n        packs: {json.dumps(packs)}" if packs else ""
+    tests = "\n".join(_test_block(t) for t in expected)
     (work / "promptfooconfig.yaml").write_text(
         f'description: e2e check\nprompts: ["{{{{q}}}}"]\n{providers_yaml}\ndefaultTest:\n  assert:\n'
-        f"    - type: python\n      value: file://{BRIDGE}\n      config:\n        context_file: {work / 'context.json'}{packs_line}\n"
+        f"    - type: python\n      value: file://{BRIDGE}\n      config:\n        context_file: {work / 'context.json'}\n"
         f"tests:\n{tests}\n")
     env = {**os.environ, "PROMPTFOO_PYTHON": sys.executable, "PROMPTFOO_CONFIG_DIR": str(work / "pf"), "PROMPTFOO_DISABLE_TELEMETRY": "1",
            "PROMPTFOO_DISABLE_UPDATE": "1", "PROMPTFOO_DISABLE_SHARING": "1"}
@@ -44,13 +41,10 @@ def _run_config(work: Path, providers_yaml: str, expected: dict[str, bool], prom
     return got, ""
 
 
-def run_promptfoo_check(source_dir: Path, expected: dict[str, bool], promptfoo: str, packs: list[str] | None = None,
-                        detectors: dict[str, list[str]] | None = None) -> tuple[dict[str, bool], str]:
+def run_promptfoo_check(source_dir: Path, expected: dict[str, bool], promptfoo: str) -> tuple[dict[str, bool], str]:
     """Run every key in `expected` as a one-word prompt against `source_dir`'s provider.py + context.json, called
     in-process (PromptFoo's file:// python provider -- no network involved).
 
-    `packs` enables optional detector packs for every test; `detectors` adds extra named detectors to specific tests
-    (for a pack detector a plugin id wouldn't select on its own -- see bridge.DEFAULT_PLUGIN_DETECTORS).
     Returns (actual pass/fail per test name, raw process output -- only non-empty when the run itself failed to produce
     results, e.g. PromptFoo not installed or a config error).
     """
@@ -58,11 +52,10 @@ def run_promptfoo_check(source_dir: Path, expected: dict[str, bool], promptfoo: 
         work = Path(tmp)
         for name in ("provider.py", "context.json"):
             (work / name).write_text((source_dir / name).read_text())
-        return _run_config(work, "providers: [file://provider.py]", expected, promptfoo, packs, detectors)
+        return _run_config(work, "providers: [file://provider.py]", expected, promptfoo)
 
 
-def run_promptfoo_check_http(url: str, context_path: Path, expected: dict[str, bool], promptfoo: str,
-                             packs: list[str] | None = None, detectors: dict[str, list[str]] | None = None) -> tuple[dict[str, bool], str]:
+def run_promptfoo_check_http(url: str, context_path: Path, expected: dict[str, bool], promptfoo: str) -> tuple[dict[str, bool], str]:
     """The same check as run_promptfoo_check, but the agent is called over real HTTP (PromptFoo's http provider)
     instead of as an in-process python call -- proves the detection also works against a network-based agent
     interface, the shape a real downstream developer's agent is actually wired into PromptFoo in.
@@ -78,7 +71,7 @@ def run_promptfoo_check_http(url: str, context_path: Path, expected: dict[str, b
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         (work / "context.json").write_text(context_path.read_text())
-        return _run_config(work, providers_yaml, expected, promptfoo, packs, detectors)
+        return _run_config(work, providers_yaml, expected, promptfoo)
 
 
 def report(expected: dict[str, bool], got: dict[str, bool], raw_output: str) -> int:

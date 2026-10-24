@@ -19,7 +19,7 @@ sys.path.insert(0, str(HERE.parents[1] / "tools" / "e2e"))
 sys.path.insert(0, str(HERE.parents[0] / "shop"))
 
 from harness import report, run_promptfoo_check_http  # noqa: E402
-from run import DETECTORS, EXPECTED  # demo/shop/run.py's own expectations -- not redefined here  # noqa: E402
+from run import EXPECTED  # demo/shop/run.py's own expectations -- not redefined here  # noqa: E402
 
 PORT = 8799
 
@@ -41,7 +41,7 @@ def main(promptfoo: str) -> int:
     try:
         _wait_until_up(PORT)
         got, raw = run_promptfoo_check_http(f"http://127.0.0.1:{PORT}/", HERE.parents[0] / "shop" / "context.json",
-                                            EXPECTED, promptfoo, packs=["customer_agent"], detectors=DETECTORS)
+                                            EXPECTED, promptfoo)
     finally:
         server.terminate()
         server.wait(timeout=5)

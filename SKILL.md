@@ -1,6 +1,6 @@
 ---
 name: agent-redteam
-description: Red-team a developer's own AI agent -- prove it won't leak secrets, won't obey planted/injected instructions, won't exceed its tool permissions, and won't make unauthorized commitments. Uses deterministic Python detectors (not LLM judgment) to decide pass/fail, a hard local spend cap, and honesty checks that catch the test lying to itself (a fake that doesn't match real data, an attack that never reached the target, a defense written in the attacks' own words). Use this skill whenever the user wants to test, red-team, security-test, stress-test, or audit their own AI agent, chatbot, or assistant -- for prompt injection, data leakage, tool misuse, permission boundaries, or whether it respects its own guardrails -- even if they don't use the words "red team" or "security," such as "will my support bot leak API keys if someone asks nicely", "can my agent be tricked into doing something it shouldn't", "I want to stress-test my chatbot before launch", "check if my agent can be jailbroken", or "does my assistant actually enforce its tool limits".
+description: Red-team a developer's own AI agent -- prove it won't leak secrets, won't obey planted/injected instructions, won't exceed its tool permissions, and won't make unauthorized commitments. Sets up PromptFoo end to end on the developer's behalf -- reads the agent's actual code, proposes which of PromptFoo's real plugins and strategies apply, assembles the config, and runs it, rather than making the developer configure PromptFoo by hand. Uses deterministic Python detectors (not LLM judgment) to decide pass/fail wherever a deterministic check is possible, a hard local spend cap, and honesty checks that catch the test lying to itself (a fake that doesn't match real data, an attack that never reached the target, a defense written in the attacks' own words). Use this skill whenever the user wants to test, red-team, security-test, stress-test, or audit their own AI agent, chatbot, or assistant, or wants to set up or configure PromptFoo for one -- for prompt injection, data leakage, tool misuse, permission boundaries, or whether it respects its own guardrails -- even if they don't use the words "red team" or "security," such as "will my support bot leak API keys if someone asks nicely", "can my agent be tricked into doing something it shouldn't", "I want to stress-test my chatbot before launch", "check if my agent can be jailbroken", "does my assistant actually enforce its tool limits", or "set up a red team for my agent".
 ---
 
 # Red-teaming your own agent
@@ -31,14 +31,19 @@ Run:
 ```
 python -m agent_redteam.preflight --model <the model their agent uses> [--promptfoo]
 ```
-from `agent-redteam-setup/scripts/`. Each check reports `ok`/`warn`/`fail` with a one-line fix. Treat a `fail` as a hard stop -- don't proceed to a real run until it's resolved. A `warn` is worth mentioning but not necessarily blocking (e.g. PromptFoo's telemetry/sharing env vars aren't set -- see step 5).
+from `agent-redteam-setup/scripts/`. Each check reports `ok`/`warn`/`fail` with a one-line fix. Treat a `fail` as a hard stop -- don't proceed to a real run until it's resolved. A `warn` is worth mentioning but not necessarily blocking (e.g. PromptFoo's telemetry/sharing env vars aren't set -- see step 5's Path A).
 
-## 3. Estimate the cost, if a real budget is involved
+## 3. Ask for a budget, then estimate the cost
 
+Always ask the developer for a dollar budget before anything runs for real -- this is the one thing they must
+supply, the same way the API key stays in their own shell. Once you know roughly how many tests will run (hand-
+written: the count you're writing; PromptFoo plugins: `estimate_test_count()` from step 5), run:
 ```
-python -m agent_redteam.estimate --tests <n> --repeats <n> --budget <dollars>
+python -m agent_redteam.estimate --tests <n> --repeats <n> --budget <dollars> [--grader-model <model>]
 ```
-gives an expected cost and a 2x ceiling. Skip this if the user already has a small, fixed budget in mind and the test count is small -- it's a safety check for when the numbers aren't obviously small, not a mandatory ceremony.
+Pass `--grader-model` whenever PromptFoo's own plugins are involved -- every PromptFoo-graded test costs a real
+grading call on top of the target call, not just the generation call. Skip this step only if the user already has
+a small, fixed budget in mind and the test count is obviously small -- it's a safety check, not a mandatory ceremony.
 
 ## 4. Start the meter and route calls through it
 
@@ -50,18 +55,62 @@ This is a real local reverse proxy: it prices every call from actual token usage
 
 ## 5. Get attacks
 
-Two paths, and the user should pick knowingly rather than default into one:
+Two paths. Default to proposing the PromptFoo-plugins path yourself -- that's the point of this skill: the
+developer shouldn't have to go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
 
-- **Hand-written attacks against their real agent** -- the most reliable option, and the only one that costs nothing beyond the calls to their agent itself. Write each attack as a PromptFoo test case; `tools/e2e/harness.py` and the `demo/*/run.py` files show the pattern (a test per planted scenario, described in `assert_bridge.py`'s config).
-- **PromptFoo's own attack generation** -- broader coverage, but some plugins (notably anything under `ecommerce:*` or needing novel attack text) require PromptFoo's *remote* generation, which sends the target's purpose and plugin config to PromptFoo's servers. Tell the user this plainly before enabling it; `references/promptfoo-setup.md` covers exactly what's sent and the env vars that control it (`PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION`, `PROMPTFOO_DISABLE_SHARING`, `PROMPTFOO_DISABLE_TELEMETRY`) -- `preflight.py --promptfoo` already checked whether these are set.
+### Path A -- PromptFoo's own plugins and strategies, set up automatically
 
-Either way, wire the grading through `assert_bridge.py`: `value: file://.../agent-redteam-setup/scripts/assert_bridge.py` with `config: {context_file: <path to the RedTeamContext JSON>, packs: [...]}`. `references/detectors.md` lists every detector, what it catches, and when a test needs a pack or an explicit `metadata.detectors` override to pull in a non-universal one (see the shop demo's `payment_instruction`/`claims_human_or_staff`/`makes_commitment` cases for a real example of this).
+1. **Read the agent's actual code** -- its tools, system prompt, and data-access layer. This is a judgment call,
+  not a script: `references/promptfoo-plugins-strategies.md` exists precisely so this step isn't a regex-and-guess
+  heuristic (the same reason a regex-based commitment/human-claim detector was removed from this toolkit entirely --
+  see `references/detectors.md`). Map what you find to that reference's groups: tool/permission boundaries,
+  injection surface, data it can leak, its business domain if it has one, whether it's RAG-based, whether it's a
+  coding agent, whether it talks to minors.
+2. **Propose a plugin + strategy list with reasoning**, and say plainly which groups you're leaving out and why.
+  Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain.
+3. **Validate the list against what's actually installed** -- `promptfoo_catalog.Catalog.load().unknown_plugins(...)`/
+  `.unknown_strategies(...)` (also checked automatically by `build_config()` below) catches a typo or a plugin
+  this PromptFoo version doesn't have, before anything is spent on it. If the pinned PromptFoo version is old or
+  you're unsure the catalog is current, re-run `tools/capture_promptfoo_catalog.py` first.
+4. **Compute the real test count and tell the developer the cost tradeoff before writing anything**:
+  `promptfoo_redteam_config.estimate_test_count(num_tests, plugins, strategies, languages)` implements PromptFoo's
+  own documented formula (`numTests * plugins * (1 + strategies) * languages`) -- feed that into step 3's
+  `estimate.py --tests <n> --grader-model <model>`. Also check `needs_generation_spend(plugins)`: `True` for
+  almost every plugin except the dataset-backed ones (`aegis`, `beavertails`, `harmbench`, etc. -- see the
+  reference doc's "Dataset plugins" section), which generate for free but still cost a real grading call per test.
+5. **Write the config**: `promptfoo_redteam_config.build_config(target, context_file, plugins, strategies, purpose,
+  bridge_path, num_tests, languages)` returns the full `promptfooconfig.yaml` text -- `target` is
+  `python_target("provider.py")` or `http_target("https://...")`, the same two shapes `tools/e2e/harness.py`
+  already proves. It wires `defaultTest.assert` to the bridge automatically, so our deterministic check runs
+  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
+6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`. Set `CI=true` in the environment first --
+  PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
+  installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
+  non-interactive run and skips it, the same env var any CI system sets). Don't fabricate a developer's email to
+  get past this some other way -- `CI=true` is the real, sanctioned path.
+7. **Say plainly what's deterministic and what isn't**: only the tool/permission, injection, and leakage groups
+  map onto anything our bridge can check. For every other group (content safety, bias, vertical compliance),
+  PromptFoo's own plugin-specific grader -- an LLM judging the response -- is the only grading mechanism, same as
+  a manual PromptFoo setup. Don't imply uniform deterministic coverage across a plugin set that spans both kinds.
+
+### Path B -- hand-written attacks against the real agent
+
+The most reliable option when PromptFoo's own plugins don't fit, or the developer wants full control over exact
+wording. Write each attack as a PromptFoo test case; `tools/e2e/harness.py` and the `demo/*/run.py` files show the
+pattern (a test per planted scenario, described in `assert_bridge.py`'s config). Wire the grading the same way:
+`value: file://.../agent-redteam-setup/scripts/assert_bridge.py` with `config: {context_file: <path>}`.
+`references/detectors.md` lists every detector and the exact wording/shape each needs to trigger.
+
+If the agent needs a check none of the 9 generic detectors cover -- something specific to its own domain -- write
+it as a small project-local Python function and wire it in as a second `type: python` PromptFoo assertion
+alongside the bridge, rather than trying to force it into this shared toolkit.
 
 ## 6. Run it, then read the real results, not just pass/fail
 
 ```
-promptfoo eval -c promptfooconfig.yaml -o results.json
-python -m agent_redteam.summarize results.json
+promptfoo eval -c promptfooconfig.yaml -o results.json          # Path B
+promptfoo export eval <id> -o results.json                      # Path A -- `redteam run` stores the eval and prints
+python -m agent_redteam.summarize results.json                  # its id ("Red team complete (ID: eval-...)"); use that id
 ```
 `summarize.py` groups by test id across repeats, separates controls from attacks, and flags two things worth reading past the headline number:
 - **flaky** -- succeeded on some repeats but not all. A one-off pass or fail is weak evidence either way; a consistent one is much stronger.
@@ -83,11 +132,12 @@ Tell the user, for each thing tested: whether it held, succeeded, or was inconcl
 
 ## Scope and limits, worth saying to the user up front
 
-This is a developer self-check, not a substitute for an independent security review -- it tests the specific things the `RedTeamContext` describes, nothing it wasn't told about. PromptFoo (Node 22.22+) is required today as the runner; a plain-Python runner for hand-written attacks (no PromptFoo dependency) is planned but not built yet.
+This is a developer self-check, not a substitute for an independent security review. PromptFoo (Node 22.22+) is required today as the runner; a plain-Python runner for hand-written attacks (no PromptFoo dependency) is planned but not built yet. For Path B (hand-written attacks), it tests exactly what the `RedTeamContext` describes, nothing it wasn't told about. For Path A (PromptFoo's own plugins), coverage is as broad as the plugins chosen -- but grading quality varies by group: the tool/permission/injection/leakage groups get a real deterministic check from this toolkit, everything else gets only PromptFoo's own LLM grader, same as a manual setup would.
 
 ## Reference files
 
 - `references/writing-a-context.md` -- the full `RedTeamContext` field reference, with the three demo contexts as worked examples.
-- `references/detectors.md` -- every detector (universal and pack), what it catches, and the exact wording/shape each needs to trigger.
+- `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
+- `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
 - `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`, with a real example of each one catching something.

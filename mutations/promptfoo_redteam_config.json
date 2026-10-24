@@ -1,0 +1,37 @@
+[
+ {
+  "find": "return any(p not in FREE_GENERATION_PLUGINS for p in plugins)",
+  "replace": "return False",
+  "note": "spend-needed never detected"
+ },
+ {
+  "find": "return num_tests * len(plugins) * (1 + len(strategies)) * len(languages or [\"en\"])",
+  "replace": "return num_tests * len(plugins)",
+  "note": "strategies and languages dropped from the test-count formula"
+ },
+ {
+  "find": "return f\"providers:\\n  - id: file://{target.value}\\n\"",
+  "replace": "return f\"providers:\\n  - id: {target.value}\\n\"",
+  "note": "python target missing its file:// scheme"
+ },
+ {
+  "find": "if not plugins:\n        raise ValueError(\"at least one plugin is required\")",
+  "replace": "pass",
+  "note": "an empty plugin list is silently accepted"
+ },
+ {
+  "find": "if bad_plugins or bad_strategies:",
+  "replace": "if False:",
+  "note": "an unknown plugin or strategy id is silently accepted"
+ },
+ {
+  "find": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies) if strategies else \"    - basic\"",
+  "replace": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies)",
+  "note": "an empty strategy list writes nothing instead of the basic baseline"
+ },
+ {
+  "find": "lang_line = f\"\\n  language: [{', '.join(languages)}]\" if languages else \"\"",
+  "replace": "lang_line = \"\"",
+  "note": "chosen languages never reach the config"
+ }
+]

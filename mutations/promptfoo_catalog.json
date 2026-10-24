@@ -1,0 +1,27 @@
+[
+ {
+  "find": "return [i for i in ids if i not in self.plugins]",
+  "replace": "return []",
+  "note": "an unknown plugin is never reported"
+ },
+ {
+  "find": "return [i for i in ids if i not in self.strategy_ids]",
+  "replace": "return []",
+  "note": "an unknown strategy is never reported"
+ },
+ {
+  "find": "tuple(data[\"default_plugins\"]), tuple(data[\"strategy_ids\"]), tuple(data[\"default_strategies\"]))",
+  "replace": "tuple(data[\"default_plugins\"]), tuple(data[\"default_strategies\"]), tuple(data[\"default_strategies\"]))",
+  "note": "strategy_ids loaded from the wrong field"
+ },
+ {
+  "find": "for s in sorted(i for i in cat.strategy_ids if i.startswith(args.prefix)):",
+  "replace": "for s in sorted(cat.strategy_ids):",
+  "note": "--prefix ignored for strategies"
+ },
+ {
+  "find": "            if p.startswith(args.prefix):",
+  "replace": "            if True:",
+  "note": "--prefix ignored for plugins"
+ }
+]
