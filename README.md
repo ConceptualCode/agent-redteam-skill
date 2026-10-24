@@ -26,7 +26,9 @@ written in the test's own words).
 | `overfit_check.py` | finds wording a defence shares with the attacks it is scored on |
 | `summarize.py` | PromptFoo results to "x of N" per attack, controls apart, flaky labels, before and after |
 | `promptfoo_catalog.py` | the real PromptFoo plugin/strategy catalog, read from a JSON snapshot captured off the installed binary |
-| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge wired in; estimates the real test count |
+| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge (and the `llm-rubric` second opinion, if there are secrets/markers) wired in; estimates the real test count |
+| `llm_rubric.py` | builds an `llm-rubric` assertion per secret/marker -- a second opinion for the obfuscated/paraphrased leaks `secret_leaked`/`marker_echoed` can't catch |
+| `coverage_check.py` | reports which `RedTeamContext` fields are actually configured vs. silently running on nothing/a generic default |
 
 Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
 results loader in `summarize.py` are written for it. The other scripts work without it. A plain-Python runner for hand-written
@@ -57,6 +59,10 @@ commands with `CI=true` set -- confirmed directly in the installed package's own
 stop for an interactive "email verification" lead-capture prompt that has nothing to do with the actual red team.
 `tools/capture_promptfoo_catalog.py` re-captures the plugin/strategy catalog from whatever PromptFoo version is pinned, so it
 never silently drifts from what's actually installed.
+
+Before trusting any "held" result, run `python -m agent_redteam.coverage_check context.json` -- a detector with nothing
+declared (an empty `forbidden_tools`, an unset `arg_bounds`) doesn't warn, it just never fires, so "held" can mean "nothing
+was ever configured to catch this" rather than "the agent resisted it."
 
 ## Test it
     python -m pytest                       # unit tests

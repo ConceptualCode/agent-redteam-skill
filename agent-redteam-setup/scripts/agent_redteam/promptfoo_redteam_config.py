@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
+from . import llm_rubric
 from .promptfoo_catalog import Catalog
 
 # The Dataset category (promptfoo.dev/docs/red-team/plugins/, "Dataset"): each pulls adversarial prompts from a
@@ -74,10 +75,15 @@ def _target_providers_yaml(target: Target) -> str:
 
 def build_config(target: Target, context_file: str, plugins: list[str], strategies: list[str], purpose: str,
                  bridge_path: str, num_tests: int = 5, languages: list[str] | None = None,
-                 catalog: Catalog | None = None) -> str:
+                 secrets: list[str] = (), markers: list[str] = (), catalog: Catalog | None = None) -> str:
     """The full promptfooconfig.yaml text. Raises ValueError before writing anything if a chosen plugin or
     strategy id isn't one this installed PromptFoo actually has -- a typo caught here, not after a real run
-    fails to generate anything for it."""
+    fails to generate anything for it.
+
+    `secrets`/`markers` are this agent's planted values, if any -- when given, an `llm-rubric` second-opinion
+    assertion is added per value automatically (see llm_rubric.py), alongside the deterministic bridge, since
+    secret_leaked/marker_echoed only catch a verbatim match and an obfuscated or paraphrased leak slips past them.
+    """
     if not plugins:
         raise ValueError("at least one plugin is required")
     catalog = catalog or Catalog.load()
@@ -88,12 +94,15 @@ def build_config(target: Target, context_file: str, plugins: list[str], strategi
     plugins_yaml = "\n".join(f"    - {p}" for p in plugins)
     strategies_yaml = "\n".join(f"    - {s}" for s in strategies) if strategies else "    - basic"
     lang_line = f"\n  language: [{', '.join(languages)}]" if languages else ""
+    rubric_yaml = "".join(f"    - type: llm-rubric\n      value: {json.dumps(a['value'])}\n"
+                          for a in llm_rubric.build_assertions(secrets, markers))
     return (
         "description: auto-generated red team run\n"
         'prompts: ["{{q}}"]\n'
         f"{_target_providers_yaml(target)}"
         "defaultTest:\n  assert:\n    - type: python\n"
         f"      value: file://{bridge_path}\n      config:\n        context_file: {context_file}\n"
+        f"{rubric_yaml}"
         f"redteam:\n  purpose: {json.dumps(purpose)}\n  numTests: {num_tests}\n"
         f"  plugins:\n{plugins_yaml}\n  strategies:\n{strategies_yaml}{lang_line}\n"
     )

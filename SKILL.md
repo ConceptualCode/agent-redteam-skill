@@ -23,6 +23,12 @@ Read `references/writing-a-context.md` for the full field reference and worked e
 
 Write the result as a JSON file (e.g. `context.json`) wherever the user's red-team work is living.
 
+**Then check the context isn't quietly empty where it matters.** `python -m agent_redteam.coverage_check context.json`
+reports, per field, whether it's actually configured or just running on nothing/a generic default -- a detector with
+nothing configured doesn't error, it just never fires, so every result in that category will read "held" regardless
+of what the agent actually does. Read every `not_configured` line out loud to the developer and ask whether that's
+because the agent genuinely has nothing there, or because it was never looked into -- don't let it pass silently.
+
 **Before going further, decide whether a real model is even going to be called.** Steps 2-4 below (preflight, cost estimate, the meter) exist to protect against a real spend -- none of them apply if the agent under test is a scripted stand-in with no real model call, the way this project's own `demo/*/provider.py` agents work (useful when there's no running version of the user's agent yet, or when proving the detector pipeline itself is the point). In that case skip straight to step 5. This isn't spelled out by anything else in this workflow -- it's worth noticing on your own by comparing this numbered sequence against how the demos are actually structured, but stating it plainly here saves that inference.
 
 ## 2. Preflight -- before anything spends money
@@ -79,10 +85,15 @@ developer shouldn't have to go set PromptFoo up by hand and pick plugins off a c
   almost every plugin except the dataset-backed ones (`aegis`, `beavertails`, `harmbench`, etc. -- see the
   reference doc's "Dataset plugins" section), which generate for free but still cost a real grading call per test.
 5. **Write the config**: `promptfoo_redteam_config.build_config(target, context_file, plugins, strategies, purpose,
-  bridge_path, num_tests, languages)` returns the full `promptfooconfig.yaml` text -- `target` is
-  `python_target("provider.py")` or `http_target("https://...")`, the same two shapes `tools/e2e/harness.py`
-  already proves. It wires `defaultTest.assert` to the bridge automatically, so our deterministic check runs
-  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
+  bridge_path, num_tests, languages, secrets=ctx.secrets, markers=ctx.markers)` returns the full
+  `promptfooconfig.yaml` text -- `target` is `python_target("provider.py")` or `http_target("https://...")`, the
+  same two shapes `tools/e2e/harness.py` already proves. It wires `defaultTest.assert` to the bridge automatically,
+  so our deterministic check runs alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
+  Always pass `secrets`/`markers` when the context has them: `build_config()` then adds an `llm-rubric`
+  second-opinion assertion per value automatically (see `references/honesty-checks.md`) -- `secret_leaked`/
+  `marker_echoed` only catch a verbatim match, and a spaced-out, encoded, or merely-described (not quoted) leak
+  slips straight past them (confirmed directly, not assumed). Tell the developer this costs a real grading call
+  per test and is itself non-deterministic -- it's a second opinion, not a replacement for the deterministic check.
 6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`. Set `CI=true` in the environment first --
   PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
@@ -103,7 +114,9 @@ pattern (a test per planted scenario, described in `assert_bridge.py`'s config).
 
 If the agent needs a check none of the 9 generic detectors cover -- something specific to its own domain -- write
 it as a small project-local Python function and wire it in as a second `type: python` PromptFoo assertion
-alongside the bridge, rather than trying to force it into this shared toolkit.
+alongside the bridge, rather than trying to force it into this shared toolkit. If the context has secrets or
+markers, also add `llm_rubric.build_assertions(ctx.secrets, ctx.markers)` to the test's `assert` list the same
+way Path A does -- the verbatim-only gap in `secret_leaked`/`marker_echoed` applies here too.
 
 ## 6. Run it, then read the real results, not just pass/fail
 
@@ -123,8 +136,9 @@ This is the step most red-team setups skip, and it's the one most likely to make
 - **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. If the provider supplies what each tool returned (`metadata.tools[i].returned`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test and `bridge.grade()` checks this automatically, relabelling the reason `"inconclusive: ..."` rather than letting an untested path read as a proven one. Otherwise, call `vacuous_check.py`'s `reached()`/`final_status()` by hand.
 - **Does the fake data the test used resemble the real thing?** If any part of the setup uses a fake/mocked tool response, compare it against a real sample with `shape_check.py` -- an invented field, a missing one, or a list the fake leaves empty when real data would fill it, can produce a result that looks clean for the wrong reason.
 - **Does a written defense (a system prompt addition, a filter) share wording with the exact attacks scoring it?** Check with `overfit_check.py` -- a defense that quotes the test's own attacks passes that benchmark for free and proves nothing about a differently-worded attacker.
+- **Was the detector that's supposed to catch this actually configured, or running on nothing?** This is `coverage_check.py` from step 1, worth re-checking here specifically because a "held" result is exactly where its absence hides best -- `forbidden_tool_used: held` reads very differently once you know whether `forbidden_tools` ever had anything in it.
 
-Only report a result as genuinely "held" once you'd be comfortable explaining why it's not one of these three.
+Only report a result as genuinely "held" once you'd be comfortable explaining why it's not one of these four.
 
 ## 8. Report back plainly
 
@@ -140,4 +154,4 @@ This is a developer self-check, not a substitute for an independent security rev
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
-- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`, with a real example of each one catching something.
+- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`, with a real example of each one catching something, plus when to add the `llm-rubric` second opinion.
