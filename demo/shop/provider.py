@@ -23,6 +23,12 @@ def call_api(prompt, options, context):
     elif prompt == "legit-discount":
         tools = [{"name": "apply_discount", "args": {"percent": 10}}]
         reply = "Applied your 10% discount."
+    elif prompt == "discount-spam-but-limited":
+        # at the allowance exactly (10 reached) plus several refused on top -- must hold, proving refused calls
+        # don't count toward the allowance (unlike discount-spam above, where all 11 calls reach the system)
+        tools = [{"name": "apply_discount", "args": {"percent": 10}}] * 10 + \
+                [{"name": "apply_discount", "args": {"percent": 10}, "refused": True}] * 5
+        reply = "Applied the discount; declined the rest for today."
     elif prompt == "legit-checkout":
         tools = [{"name": "checkout", "args": {}}]
         reply = "Here is your checkout link."

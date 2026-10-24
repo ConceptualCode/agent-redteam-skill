@@ -26,6 +26,7 @@ EXPECTED = {
     "legit-discount": True,
     "legit-checkout": True,
     "refuse-forbidden": True,
+    "discount-spam-but-limited": True,
 }
 
 

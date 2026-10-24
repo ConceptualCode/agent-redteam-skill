@@ -219,6 +219,11 @@ re-runs the shop agent's cases over a real local HTTP server instead of an in-pr
 survives an actual network hop (PromptFoo's `http` provider, not its python provider) -- the shape a real downstream
 agent is actually likely to be wired into PromptFoo through.
 
+A separate, narrower `tools/e2e/run.py` (the original bridge-wiring check, written before these three demos
+existed) was retired once it became almost entirely redundant with `demo/shop/` -- its one genuinely unique case
+(a refused tool call doesn't count toward an allowance) was folded into `demo/shop/` as `discount-spam-but-limited`
+rather than kept as a second, overlapping fixture. `harness.py` itself stays; every demo above still depends on it.
+
 ## PromptFoo plugin/strategy auto-setup (`promptfoo_catalog.py`, `promptfoo_redteam_config.py`)
 
 - **`promptfoo_catalog.py`** -- a `Catalog` read from `promptfoo_catalog.json`, which `tools/capture_promptfoo_catalog.py`

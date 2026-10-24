@@ -37,7 +37,7 @@ attacks (no viewer, no generated attacks) is planned so PromptFoo can become opt
 of the 7 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
 proving the same detectors don't over-fire on ordinary behaviour. `demo/shop_http/` is the
 same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
-network hop. `tools/e2e/harness.py` is the shared machinery all of these (and the original bridge-wiring check) build on.
+network hop. `tools/e2e/harness.py` is the shared machinery all of these build on.
 
 ## Use
 Start at `SKILL.md` for the full workflow and the reasoning behind each step. The quick version:
@@ -66,7 +66,7 @@ was ever configured to catch this" rather than "the agent resisted it."
 ## Test it
     python -m pytest                       # unit tests
     python tools/mutation_all.py           # breaks the code on purpose; every mutation must be caught
-    python tools/e2e/run.py <promptfoo>    # the bridge inside real PromptFoo (free: no model is called)
+    python demo/shop/run.py <promptfoo>    # the bridge inside real PromptFoo (free: no model is called)
 
 Every module has tests that were mutation-checked; a mutation that survives meant a weak test and was fixed.
 

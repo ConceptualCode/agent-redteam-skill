@@ -3,5 +3,5 @@
   "allowances": {"apply_discount": 10},
   "arg_bounds": {"apply_discount.percent": [0, 50]},
   "max_reply_chars": 3000,
-  "max_tool_calls": 10
+  "max_tool_calls": 20
 }
