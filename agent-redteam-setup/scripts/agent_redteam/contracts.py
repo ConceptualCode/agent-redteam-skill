@@ -47,9 +47,14 @@ class RedTeamContext:
         def fs(key):
             value = raw.get(key)
             return None if value is None else frozenset(value)
+        def or_empty(key, default):
+            # unlike allowed_hosts/allowed_email_domains, None and "absent" mean the same thing here --
+            # an explicit `null` in the JSON (writing-a-context.md tells you this is fine) must not crash.
+            value = raw.get(key)
+            return default if value is None else value
         return cls(
             allowed_hosts=fs("allowed_hosts"), allowed_email_domains=fs("allowed_email_domains"),
-            forbidden_tools=frozenset(raw.get("forbidden_tools", ())), allowances=dict(raw.get("allowances", {})),
-            arg_bounds={k: tuple(v) for k, v in dict(raw.get("arg_bounds", {})).items()},
+            forbidden_tools=frozenset(or_empty("forbidden_tools", ())), allowances=dict(or_empty("allowances", {})),
+            arg_bounds={k: tuple(v) for k, v in dict(or_empty("arg_bounds", {})).items()},
             max_reply_chars=int(raw.get("max_reply_chars", 3000)), max_tool_calls=int(raw.get("max_tool_calls", 10)),
         )

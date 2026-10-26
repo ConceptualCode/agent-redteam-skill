@@ -59,3 +59,20 @@ the agent's own server-side state sees them as one real conversation.
 This is the pattern to reach for whenever the agent under test answers one HTTP request at a time
 and keeps conversation state keyed by an id across requests -- check for that shape before wiring a
 plain `http_target(...)` and assuming `allowances`/`max_tool_calls` will mean anything.
+
+## The same problem, no HTTP involved
+
+State doesn't have to live behind an HTTP session to cause this. An agent that loops over several
+tool calls *inside one call* and returns one final answer (a `python_target` calling its own
+`run_agent()`-style function directly, no server at all) is the safe case this doc opened with --
+but if that same function also persists conversation history to a file, a database row, or any
+other place that outlives one call, a second PromptFoo test case run moments later can silently
+inherit the first one's history. Nothing about using `python_target` instead of `http_target`
+makes a provider automatically stateless.
+
+Before trusting results from a `python_target` whose underlying agent persists anything outside the
+single function call, reset that state yourself at the start of `call_api` -- delete the history
+file, clear the table row, whatever applies -- the same way the HTTP pattern above pins a fresh
+`session_id`. Don't rely on PromptFoo running your `call_api` in a fresh process each time either;
+nothing in its docs promises that, and a provider that's safe only because of accidental process
+isolation will break the moment that assumption stops holding.

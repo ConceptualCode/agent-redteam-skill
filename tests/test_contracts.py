@@ -23,3 +23,8 @@ def test_context_from_dict_applies_defaults_and_converts_types():
     c = RedTeamContext.from_dict({"allowed_hosts": ["ok.example"], "arg_bounds": {"add.qty": [1, 50]}})
     assert c.allowed_hosts == frozenset({"ok.example"}) and c.allowed_email_domains is None
     assert c.arg_bounds == {"add.qty": (1, 50)} and c.max_reply_chars == 3000 and c.max_tool_calls == 10
+
+
+def test_context_from_dict_treats_an_explicit_null_the_same_as_omitting_the_field():
+    c = RedTeamContext.from_dict({"forbidden_tools": None, "allowances": None, "arg_bounds": None})
+    assert c.forbidden_tools == frozenset() and c.allowances == {} and c.arg_bounds == {}

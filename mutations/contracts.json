@@ -18,5 +18,10 @@
   "find": "if isinstance(t, Mapping)",
   "replace": "if True",
   "note": "a non-dict tool entry is no longer skipped"
+ },
+ {
+  "find": "return default if value is None else value",
+  "replace": "return raw.get(key, default)",
+  "note": "an explicit JSON null for forbidden_tools/allowances/arg_bounds crashes from_dict instead of being treated as absent"
  }
 ]

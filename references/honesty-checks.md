@@ -23,9 +23,11 @@ A "held" result only means something if the planted attack genuinely reached the
 
 That relabelled `reason` text sat somewhere nobody would actually see it at first -- found running the skill live, not from reading the code: PromptFoo's own top-level `gradingResult.reason` gets overwritten to a generic "All assertions passed" message once a test passes, and `summarize.py`'s table didn't carry the distinction forward either, so an inconclusive result and a genuinely proven one looked identical in both places a person would actually look. `summarize.py` now tracks this itself (reads each python component's own `reason`, not the overwritten top-level one) and prints it as `"N inconclusive (never reached)"` next to that test's row -- the fix that actually makes this check worth running, not just the bridge.py wiring alone.
 
-For a manual check outside the PromptFoo pipeline -- or when the provider doesn't supply `returned` and you're collecting tool outputs yourself -- call it directly:
+For a manual check outside the PromptFoo pipeline -- or when the provider doesn't supply `returned` and you're collecting tool outputs yourself -- build the `Result` first (`Result.from_provider(output, metadata)`, the same constructor the bridge uses; `output` is the reply text, not a keyword -- there's no `output=` field on `Result` itself), then call `reached()` directly:
 ```python
+from agent_redteam.contracts import Result
 from agent_redteam.vacuous_check import reached, final_status
+result = Result.from_provider("the agent's reply", {"tools": [{"name": "read_file", "args": {"path": "x"}}]})
 r = reached(result, required_tools=["read_file"], marker="the-planted-text", tool_outputs=[...])
 status = final_status(attack_succeeded=False, reach=r)  # "held", "succeeded", or "inconclusive"
 ```
