@@ -2,6 +2,11 @@
 
     python -m agent_redteam.summarize results.json [after.json]      (PromptFoo: `promptfoo export eval <id> -o results.json`)
 
+A test counts as a control when its id (the `attack_id` var, or the description) starts with `ctl-`
+(`--control-prefix` to change it) -- or, regardless of naming, when the test's own `metadata.control` is
+truthy. A description like `control-foo` does NOT match the default prefix; use `ctl-foo` or set
+`metadata: {control: true}` on the test.
+
 Our own rule decides held or succeeded when the test has one (any model grader -- PromptFoo's own plugin-specific
 one -- is a second opinion; a disagreement from any of them is counted, never overrides).
 A run with no output is an error, never a pass. For a control, "succeeded" means the agent refused something it should do.

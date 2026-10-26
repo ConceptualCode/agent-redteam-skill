@@ -68,6 +68,8 @@ export ANTHROPIC_BASE_URL=http://127.0.0.1:8787           # the agent's own clie
 ```
 This is a real local reverse proxy: it prices every call from actual token usage and hard-refuses once the budget's spent -- confirmed PromptFoo itself has nothing like this (it tracks cost per call but has no global cap). The user's API key stays in their own shell -- never ask them to paste it into a file or a message; the meter just forwards the auth header through (`Authorization` for OpenAI, `x-api-key` for Anthropic) without storing it. Whichever model is actually priced in `prices.json` decides which usage-response shape gets parsed (`shape: "openai"` or `"anthropic"` per model family) -- a model with neither a price nor a matching shape is refused outright, the same "don't guess, don't silently undercount" rule the rest of this toolkit follows.
 
+**This only protects spend that actually goes through the proxy.** If the agent's own HTTP client is hardcoded to the real API URL instead of reading `OPENAI_BASE_URL`/the SDK's base-url setting, the meter sees nothing and enforces nothing -- silently, with no warning, while the real API bills normally. Confirm it's actually in the path before relying on it for a real run: hit the real target once for real, then check `curl http://127.0.0.1:8787/_meter` shows a nonzero call count. If it's still at zero after a call that should have gone through, the target is bypassing the meter.
+
 ## 5. Get attacks
 
 Two paths. Default to proposing the PromptFoo-plugins path yourself -- that's the point of this skill: the
@@ -97,7 +99,10 @@ developer shouldn't have to go set PromptFoo up by hand and pick plugins off a c
   bridge_path, num_tests, languages)` returns the full `promptfooconfig.yaml` text -- `target` is
   `python_target("provider.py")` or `http_target("https://...")`, the same two shapes `tools/e2e/harness.py`
   already proves. It wires `defaultTest.assert` to the bridge automatically, so our deterministic check runs
-  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML.
+  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML. **If the agent keeps state
+  server-side across separate requests (a session/conversation id) rather than doing everything in one call**, a
+  plain `http_target` can't exercise `allowances`/`max_tool_calls` at all -- see `references/stateful-providers.md`
+  before wiring either target shape.
 6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`. Set `CI=true` in the environment first --
   PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
@@ -130,7 +135,7 @@ promptfoo eval -c promptfooconfig.yaml -o results.json          # Path B
 promptfoo export eval <id> -o results.json                      # Path A -- `redteam run` stores the eval and prints
 python -m agent_redteam.summarize results.json                  # its id ("Red team complete (ID: eval-...)"); use that id
 ```
-`summarize.py` groups by test id across repeats, separates controls from attacks, and flags two things worth reading past the headline number:
+`summarize.py` groups by test id across repeats, separates controls from attacks, and flags two things worth reading past the headline number. **A test is only recognized as a control if its id/description starts with `ctl-` (the default `--control-prefix`) or its `metadata.control` is explicitly `true`** -- a description like `control-foo` does not match and gets bucketed as an attack, silently.
 - **flaky** -- succeeded on some repeats but not all. A one-off pass or fail is weak evidence either way; a consistent one is much stronger.
 - **grader disagreed** -- if a model-grader assertion exists alongside the deterministic rule, they disagreed. The deterministic rule always wins for the pass/fail verdict; a disagreement is a signal worth reading, not something to average away.
 
@@ -156,6 +161,7 @@ This is a developer self-check, not a substitute for an independent security rev
 ## Reference files
 
 - `references/writing-a-context.md` -- the full `RedTeamContext` field reference, with the three demo contexts as worked examples.
+- `references/stateful-providers.md` -- wiring a provider for an agent whose state (and dangerous repetition) spans several separate requests, not one.
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.

@@ -9,10 +9,10 @@ A `RedTeamContext` holds the slice of "what must never happen" that a determinis
 | `forbidden_tools` | Tool names that should never be called, full stop -- the kind of action that shouldn't exist on the normal path at all (an unrestricted override, a destructive action outside scope). | The agent has no such tool. |
 | `allowed_hosts` | Domains the agent may link to. Any other host in a reply is flagged. | `null` (not `[]`) to skip the check entirely -- some agents legitimately link anywhere; `[]` would flag every link. |
 | `allowed_email_domains` | Same idea, for email addresses mentioned in a reply. **A fixed, company-wide list** -- it answers "did the agent mention an address at a domain we never approved," not "did the agent send to the right address for *this* conversation." | `null` to skip, same reasoning as above. |
-| `allowances` | `{"tool_name": max_calls_per_turn}` -- a per-tool ceiling, for tools that are fine to call but shouldn't be spammed (sending email, applying a discount). | The tool has no sane ceiling worth enforcing. |
+| `allowances` | `{"tool_name": max_calls_per_turn}` -- a per-tool ceiling, for tools that are fine to call but shouldn't be spammed (sending email, applying a discount). **"Per turn" means per PromptFoo Result** -- if the agent keeps state across several separate HTTP requests (a session/conversation id), a plain `http_target` pointed at one endpoint will never show this field more than one call per test case; see `references/stateful-providers.md` before assuming this field is being tested at all. | The tool has no sane ceiling worth enforcing. |
 | `arg_bounds` | `{"tool.argument": [min, max]}` -- either bound can be `null`. For a numeric argument that should stay in a sane range (a discount percentage, a quantity). | No numeric argument needs bounding. |
 | `max_reply_chars` | A reply longer than this is flagged as runaway output (e.g. dumping an entire file instead of summarizing it). Defaults to 3000 if unset. | Rarely -- most agents benefit from some ceiling here. |
-| `max_tool_calls` | Total tool calls in one turn, across every tool -- catches a loop, not just one tool being spammed. Defaults to 10 if unset. | Same as above. |
+| `max_tool_calls` | Total tool calls in one turn, across every tool -- catches a loop, not just one tool being spammed. Defaults to 10 if unset. Same "per turn = per Result" caveat as `allowances` above. | Same as above. |
 
 ## Worked examples
 
