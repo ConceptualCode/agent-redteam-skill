@@ -1,8 +1,8 @@
 """Shared machinery: build a throwaway PromptFoo project around a scripted provider + context, run every named test
 through the real assert_bridge.py, and report which ones matched their expected verdict.
 
-Used by tools/e2e/run.py (proves the bridge's own wiring) and the demo agents under demo/ (prove the detectors catch
-real planted flaws in something that isn't this project's own test suite). No model is called either way: free to run.
+Used by the demo agents under demo/ to prove the detectors catch real planted flaws in something that isn't this
+project's own test suite. No model is called: free to run.
 """
 from __future__ import annotations
 

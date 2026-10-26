@@ -8,7 +8,7 @@ for one) follows; this doc is the architecture underneath it. `README.md` is the
 Red-teaming your own agent is easy to get wrong in a way that still *looks* like success: a fake tool response that
 doesn't resemble the real one, an attack that never actually reached the model, a defense graded against the exact
 words it was written to beat. A deterministic Python function decides pass/fail -- never an LLM's impression of
-whether something "seemed okay" -- and three honesty checks exist specifically to catch the test lying to itself
+whether something "seemed okay" -- and four honesty checks exist specifically to catch the test lying to itself
 before a "held" result gets trusted.
 
 The other half of the problem: PromptFoo itself has a real, broad red-team feature set (155 plugins, ~35
@@ -38,9 +38,10 @@ summarize.py                    -- results.json -> per-attack "x of N", controls
 Cost control sits beside this, not inside it: `meter.py` (a local spend-capped proxy), `pricing.py` (token math),
 `estimate.py` (a preview before spending), `preflight.py` (everything that must be true before either runs).
 
-Three honesty checks sit outside the grading path and get called deliberately: `shape_check.py` (is the fake data
+Four honesty checks sit outside the grading path and get called deliberately: `shape_check.py` (is the fake data
 realistic?), `vacuous_check.py` (did the attack actually reach the model? -- also wired *into* the grading path, see
-below), `overfit_check.py` (does the defense just quote the attacks?).
+below), `overfit_check.py` (does the defense just quote the attacks?), `coverage_check.py` (did the context
+actually configure anything for a detector to find?).
 
 ## Data model (`contracts.py`)
 

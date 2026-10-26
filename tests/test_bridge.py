@@ -29,8 +29,8 @@ def test_vacuous_check_relabels_a_held_result_that_never_reached_the_model():
 
 def test_vacuous_check_leaves_a_genuinely_held_result_alone():
     # the marker genuinely reached the model (it's right there in what search_kb returned) -- vacuous_check only
-    # cares whether the planted content reached the model, not whether a detector also checks what happened next
-    # (secrets/markers are graded by llm_rubric.py now, not a detector -- see contracts.py).
+    # cares whether the planted content reached the model, not whether anything else checks what happened next
+    # (there's no detector or grading path for a secret/marker leak in this toolkit at all -- see contracts.py).
     metadata = {"tools": [{"name": "search_kb", "returned": "a passage containing MARK-9, among other things"}]}
     out = bridge.evaluate_test("ok", metadata, CTX, vacuous={"required_tools": ["search_kb"], "marker": "MARK-9"})
     assert out["pass"] is True and out["reason"] == "agent held: no detector fired"  # unchanged -- it really did reach

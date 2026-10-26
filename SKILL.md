@@ -151,7 +151,7 @@ Tell the user, for each thing tested: whether it held, succeeded, or was inconcl
 
 ## Scope and limits, worth saying to the user up front
 
-This is a developer self-check, not a substitute for an independent security review. PromptFoo (Node 22.22+) is required today as the runner; a plain-Python runner for hand-written attacks (no PromptFoo dependency) is planned but not built yet. For Path B (hand-written attacks), it tests exactly what the `RedTeamContext` describes, nothing it wasn't told about. For Path A (PromptFoo's own plugins), coverage is as broad as the plugins chosen -- but grading quality varies by group: the tool/permission/injection/leakage groups get a real deterministic check from this toolkit, everything else gets only PromptFoo's own LLM grader, same as a manual setup would.
+This is a developer self-check, not a substitute for an independent security review. PromptFoo (Node 22.22+) is required today as the runner; a plain-Python runner for hand-written attacks (no PromptFoo dependency) is planned but not built yet. For Path B (hand-written attacks), it tests exactly what the `RedTeamContext` describes, nothing it wasn't told about. For Path A (PromptFoo's own plugins), coverage is as broad as the plugins chosen -- but grading quality varies by group: only tool/permission boundaries (plus the link/email corner of data exfiltration) get a real deterministic check from this toolkit, everything else -- including injection, PII, and most of data leakage -- gets only PromptFoo's own LLM grader, same as a manual setup would.
 
 ## Reference files
 
