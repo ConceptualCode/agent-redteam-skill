@@ -15,6 +15,8 @@ Find out, from the conversation or by asking: what tools does their agent have, 
 
 Don't over-ask if the user already described their agent -- extract what you can and only ask about genuine gaps.
 
+**Is "the agent" actually several agents behind a router or planner?** If a request gets dispatched to one of several specialized sub-agents rather than handled by one thing, that's two separate things to test, not one -- see `references/multi-agent-systems.md` before assuming testing one sub-agent in isolation covers the system.
+
 ## 1. Write a RedTeamContext
 
 This captures the narrow slice of "what must never happen" that can be checked deterministically -- tool and permission boundaries, mainly: hosts/email domains it should never reach outside of, tools it should never call, per-tool attempt allowances, numeric argument bounds, reply-length and tool-call ceilings. It's one of three things that together cover an agent, not the complete picture by itself -- this context, the PromptFoo plugins chosen in step 5 (judgment-driven, LLM-graded), and a project-local custom check for anything neither reaches.
@@ -179,6 +181,7 @@ This is a developer self-check, not a substitute for an independent security rev
 
 - `references/writing-a-context.md` -- the full `RedTeamContext` field reference, with the three demo contexts as worked examples.
 - `references/stateful-providers.md` -- wiring a provider for an agent whose state (and dangerous repetition) spans several separate requests, not one.
+- `references/multi-agent-systems.md` -- testing each sub-agent behind a router separately, and testing the router's own dispatch decision as a boundary in its own right.
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
