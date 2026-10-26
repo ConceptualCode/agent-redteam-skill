@@ -55,9 +55,14 @@ a small, fixed budget in mind and the test count is obviously small -- it's a sa
 
 ```
 python -m agent_redteam.meter --budget <dollars> &
-export OPENAI_BASE_URL=http://127.0.0.1:8787/v1
+export OPENAI_BASE_URL=http://127.0.0.1:8787/v1          # OpenAI (the default --upstream)
 ```
-This is a real local reverse proxy: it prices every call from actual token usage and hard-refuses once the budget's spent. The user's `OPENAI_API_KEY` stays in their own shell -- never ask them to paste it into a file or a message; the meter just forwards the Authorization header through.
+or, for Anthropic:
+```
+python -m agent_redteam.meter --budget <dollars> --upstream https://api.anthropic.com &
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8787           # the agent's own client/SDK base-url setting, not an env var the meter reads
+```
+This is a real local reverse proxy: it prices every call from actual token usage and hard-refuses once the budget's spent -- confirmed PromptFoo itself has nothing like this (it tracks cost per call but has no global cap). The user's API key stays in their own shell -- never ask them to paste it into a file or a message; the meter just forwards the auth header through (`Authorization` for OpenAI, `x-api-key` for Anthropic) without storing it. Whichever model is actually priced in `prices.json` decides which usage-response shape gets parsed (`shape: "openai"` or `"anthropic"` per model family) -- a model with neither a price nor a matching shape is refused outright, the same "don't guess, don't silently undercount" rule the rest of this toolkit follows.
 
 ## 5. Get attacks
 

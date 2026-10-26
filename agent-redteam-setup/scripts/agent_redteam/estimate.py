@@ -24,9 +24,11 @@ def mean_call_cost(log_path: str | Path) -> float:
 def estimate(tests: int, repeats: int, model: str, prices: Prices, grader_model: str | None = None,
              measured_call_cost: float | None = None, **overrides) -> dict:
     """Expected and ceiling cost in dollars. The ceiling is double the expectation: runs and tool loops vary."""
+    # a preview, not an exact bill: every token is priced at the fresh rate (no cached-input/cache-write
+    # discount modeled), which makes this estimate conservative (if anything, an overestimate) rather than wrong
     p = {**DEFAULTS, **overrides}
-    call = measured_call_cost if measured_call_cost is not None else prices.cost_usd(model, p["prompt_tokens"], 0, p["completion_tokens"])
-    grade = prices.cost_usd(grader_model, p["grader_prompt_tokens"], 0, p["grader_completion_tokens"]) if grader_model else 0.0
+    call = measured_call_cost if measured_call_cost is not None else prices.cost_usd(model, p["prompt_tokens"], 0, 0, p["completion_tokens"])
+    grade = prices.cost_usd(grader_model, p["grader_prompt_tokens"], 0, 0, p["grader_completion_tokens"]) if grader_model else 0.0
     per_test = call * p["calls_per_test"] + grade
     runs = tests * repeats
     expected = runs * per_test + (p["generation_cost"] if grader_model else 0.0)

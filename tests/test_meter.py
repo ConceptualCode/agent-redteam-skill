@@ -8,13 +8,19 @@ import pytest
 from agent_redteam.meter import Meter, make_server, usage_of
 from agent_redteam.pricing import Prices
 
-PRICES = Prices({"gpt-4.1": [2.0, 0.5, 8.0]})
+PRICES = Prices({"gpt-4.1": {"shape": "openai", "per_million_usd": {"input": 2.0, "cached_input": 0.5, "output": 8.0}},
+                 "claude-opus-5-5": {"shape": "anthropic", "per_million_usd": {"input": 4.0, "cached_input": 0.2, "cache_write": 5.0, "output": 20.0}}})
 BODY = json.dumps({"model": "gpt-4.1", "messages": []}).encode()
 
 
 def reply(prompt=500_000, completion=0, cached=0):
     return json.dumps({"usage": {"prompt_tokens": prompt, "completion_tokens": completion,
                                  "prompt_tokens_details": {"cached_tokens": cached}}}).encode()
+
+
+def anthropic_reply(input=0, output=0, cache_read=0, cache_write=0):
+    return json.dumps({"usage": {"input_tokens": input, "output_tokens": output,
+                                 "cache_read_input_tokens": cache_read, "cache_creation_input_tokens": cache_write}}).encode()
 
 
 class Upstream:
@@ -127,10 +133,39 @@ def test_the_summary_endpoint_reports_state():
     assert status == 200 and json.loads(body)["remaining"] == 1.0
 
 
-def test_usage_of_reads_both_api_styles():
-    assert usage_of({"usage": {"prompt_tokens": 5, "completion_tokens": 7}}) == (5, 0, 7)
-    assert usage_of({"usage": {"input_tokens": 3, "output_tokens": 4, "input_tokens_details": {"cached_tokens": 1}}}) == (3, 1, 4)
-    assert usage_of({}) == (0, 0, 0)
+def test_usage_of_reads_both_openai_shapes_and_normalizes_the_total_to_a_fresh_count():
+    assert usage_of({"usage": {"prompt_tokens": 5, "completion_tokens": 7}}, "openai") == (5, 0, 0, 7)
+    # the responses-API style and chat-completions style both report a *total* prompt/input count with the
+    # cached subset broken out -- usage_of must subtract it, not pass the total through as if it were fresh
+    assert usage_of({"usage": {"input_tokens": 3, "output_tokens": 4, "input_tokens_details": {"cached_tokens": 1}}}, "openai") == (2, 1, 0, 4)
+    assert usage_of({}, "openai") == (0, 0, 0, 0)
+
+
+def test_usage_of_reads_the_real_anthropic_shape_which_is_structurally_different():
+    # confirmed against Anthropic's own docs: input_tokens is *already* the uncached count, not a total to
+    # subtract from, and cache_creation_input_tokens is a third, separate tier openai has no equivalent of
+    assert usage_of({"usage": {"input_tokens": 3, "output_tokens": 4, "cache_read_input_tokens": 1,
+                               "cache_creation_input_tokens": 2}}, "anthropic") == (3, 1, 2, 4)
+    assert usage_of({}, "anthropic") == (0, 0, 0, 0)
+
+
+def test_usage_of_rejects_an_unknown_shape_rather_than_guess():
+    with pytest.raises(KeyError):
+        usage_of({"usage": {"input_tokens": 1}}, "made-up-provider")
+
+
+def test_anthropics_api_key_and_version_headers_are_forwarded():
+    m, up = meter(log_path=None)
+    post(m, body=json.dumps({"model": "gpt-4.1"}).encode(),
+        headers={"x-api-key": "SECRET-ANTHROPIC-KEY", "anthropic-version": "2023-06-01", "X-Evil": "1"})
+    assert up.calls[0][2] == {"x-api-key": "SECRET-ANTHROPIC-KEY", "anthropic-version": "2023-06-01"}
+
+
+def test_an_anthropic_shaped_model_is_priced_with_its_own_cache_write_tier():
+    m, _ = meter(up=Upstream(body=anthropic_reply(input=1_000_000, output=1_000_000, cache_read=1_000_000, cache_write=1_000_000)))
+    post(m, body=json.dumps({"model": "claude-opus-5-5"}).encode())
+    assert m.summary()["spent"] == pytest.approx(4.0 + 0.2 + 5.0 + 20.0)
+    assert m.summary()["by_model"] == {"claude-opus-5-5": pytest.approx(4.0 + 0.2 + 5.0 + 20.0)}
 
 
 def test_it_works_over_real_sockets_and_forwards_the_callers_authorization(tmp_path):

@@ -5,7 +5,8 @@ import pytest
 from agent_redteam.estimate import estimate, mean_call_cost, verdict
 from agent_redteam.pricing import Prices
 
-PRICES = Prices({"gpt-4.1": [2.0, 0.5, 8.0], "gpt-4.1-mini": [0.4, 0.1, 1.6]})
+PRICES = Prices({"gpt-4.1": {"shape": "openai", "per_million_usd": {"input": 2.0, "cached_input": 0.5, "output": 8.0}},
+                 "gpt-4.1-mini": {"shape": "openai", "per_million_usd": {"input": 0.4, "cached_input": 0.1, "output": 1.6}}})
 
 
 def test_the_default_estimate_matches_the_documented_arithmetic():

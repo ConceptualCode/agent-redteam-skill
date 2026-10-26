@@ -15,9 +15,19 @@
   "note": "refusals not counted"
  },
  {
-  "find": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\"}",
-  "replace": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\", \"x-evil\"}",
+  "find": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\", \"x-api-key\", \"anthropic-version\"}",
+  "replace": "FORWARDED = {\"authorization\", \"content-type\", \"openai-organization\", \"openai-project\", \"x-api-key\", \"anthropic-version\", \"x-evil\"}",
   "note": "extra headers forwarded"
+ },
+ {
+  "find": "return max(total - cached, 0), cached, 0, u.get(\"completion_tokens\", u.get(\"output_tokens\", 0))",
+  "replace": "return total, cached, 0, u.get(\"completion_tokens\", u.get(\"output_tokens\", 0))",
+  "note": "openai's cached subset not subtracted from the total, double-billing it"
+ },
+ {
+  "find": "return (u.get(\"input_tokens\", 0), u.get(\"cache_read_input_tokens\", 0),\n            u.get(\"cache_creation_input_tokens\", 0), u.get(\"output_tokens\", 0))",
+  "replace": "return (u.get(\"input_tokens\", 0), u.get(\"cache_creation_input_tokens\", 0),\n            u.get(\"cache_read_input_tokens\", 0), u.get(\"output_tokens\", 0))",
+  "note": "anthropic's cache-read and cache-write tiers swapped"
  },
  {
   "find": "if payload.get(\"stream\"):",

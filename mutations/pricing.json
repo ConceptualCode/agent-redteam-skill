@@ -1,15 +1,5 @@
 [
  {
-  "find": "fresh = max(prompt_tokens - cached_tokens, 0)",
-  "replace": "fresh = prompt_tokens - cached_tokens",
-  "note": "negative fresh tokens allowed"
- },
- {
-  "find": "cached_tokens * cached +",
-  "replace": "cached_tokens * inp +",
-  "note": "cached tokens billed at the full rate"
- },
- {
   "find": "model.startswith(m + \"-\")",
   "replace": "model.startswith(m)",
   "note": "a different family sharing a prefix matches"
@@ -20,8 +10,28 @@
   "note": "shorter family chosen over the longest"
  },
  {
-  "find": "/ 1_000_000",
-  "replace": "/ 1_000",
+  "find": "{**{\"cache_write\": 0}, **v[\"per_million_usd\"]}",
+  "replace": "v[\"per_million_usd\"]",
+  "note": "a price file that omits cache_write raises instead of defaulting to zero"
+ },
+ {
+  "find": "return self._models[self.base_model(model)][\"shape\"]",
+  "replace": "return \"openai\"",
+  "note": "every model reports the openai shape regardless of what's listed"
+ },
+ {
+  "find": "input_tokens * r.input + cached_input_tokens * r.cached_input",
+  "replace": "input_tokens * r.cached_input + cached_input_tokens * r.input",
+  "note": "input and cached_input rates swapped"
+ },
+ {
+  "find": "+ cache_write_tokens * r.cache_write + output_tokens * r.output",
+  "replace": "+ output_tokens * r.output",
+  "note": "cache-write tokens never billed"
+ },
+ {
+  "find": "+ cache_write_tokens * r.cache_write + output_tokens * r.output) / 1_000_000",
+  "replace": "+ cache_write_tokens * r.cache_write + output_tokens * r.output) / 1_000",
   "note": "wrong per-million divisor"
  }
 ]

@@ -5,7 +5,7 @@ import pytest
 from agent_redteam.preflight import Check, run_checks
 from agent_redteam.pricing import Prices
 
-PRICES = Prices({"gpt-4.1": [2, 0.5, 8]})
+PRICES = Prices({"gpt-4.1": {"shape": "openai", "per_million_usd": {"input": 2, "cached_input": 0.5, "output": 8}}})
 GOOD_ENV = {"OPENAI_API_KEY": "sk-SECRET-VALUE", "OPENAI_BASE_URL": "http://127.0.0.1:8787/v1",
             "PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION": "true", "PROMPTFOO_DISABLE_SHARING": "true", "PROMPTFOO_DISABLE_TELEMETRY": "true"}
 

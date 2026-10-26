@@ -1,9 +1,13 @@
-"""A local proxy in front of an OpenAI-compatible API that counts every call's cost and refuses calls past a hard budget.
+"""A local proxy in front of an OpenAI- or Anthropic-shaped API that counts every call's cost and refuses calls past
+a hard budget -- the one thing neither provider's own tooling provides (PromptFoo included: it tracks cost per call,
+confirmed in its source, but has no global dollar cap; checked its real --help output too, nothing like --max-cost).
 
     python -m agent_redteam.meter --budget 2.5 --port 8787      # then set OPENAI_BASE_URL=http://127.0.0.1:8787/v1
+    python -m agent_redteam.meter --budget 2.5 --upstream https://api.anthropic.com   # same meter, Anthropic instead
 
-The caller's Authorization header is forwarded and never stored. The cap is checked before each call, so calls already in
-flight when it is reached can pass it by a few cents. A call that times out upstream may still be billed; it is logged.
+The caller's auth header (Authorization, or Anthropic's x-api-key) is forwarded and never stored. The cap is checked
+before each call, so calls already in flight when it is reached can pass it by a few cents. A call that times out
+upstream may still be billed; it is logged.
 """
 from __future__ import annotations
 
@@ -19,16 +23,37 @@ from typing import Callable
 
 from .pricing import Prices
 
-FORWARDED = {"authorization", "content-type", "openai-organization", "openai-project"}
+FORWARDED = {"authorization", "content-type", "openai-organization", "openai-project", "x-api-key", "anthropic-version"}
 Forward = Callable[[str, str, dict, bytes], tuple[int, dict, bytes]]
 
 
-def usage_of(body: dict) -> tuple[int, int, int]:
-    """(prompt, cached, completion) tokens from a chat-completions or responses-API body."""
-    u = body.get("usage") or {}
+def _usage_openai(u: dict) -> tuple[int, int, int, int]:
+    """OpenAI's two shapes (chat-completions, responses API): the prompt/input count is the *total*, with the
+    cached subset broken out separately -- subtract it here so callers always get a plain fresh/cached/output
+    split, regardless of which provider's raw shape it came from. No cache-write tier in either OpenAI shape."""
+    total = u.get("prompt_tokens", u.get("input_tokens", 0))
     details = u.get("prompt_tokens_details") or u.get("input_tokens_details") or {}
-    return (u.get("prompt_tokens", u.get("input_tokens", 0)), details.get("cached_tokens", 0),
-            u.get("completion_tokens", u.get("output_tokens", 0)))
+    cached = details.get("cached_tokens", 0)
+    return max(total - cached, 0), cached, 0, u.get("completion_tokens", u.get("output_tokens", 0))
+
+
+def _usage_anthropic(u: dict) -> tuple[int, int, int, int]:
+    """The Messages API usage object: `input_tokens` is already the uncached count (not a total to subtract
+    from), with `cache_read_input_tokens`/`cache_creation_input_tokens` as separate additive fields -- a real
+    structural difference from OpenAI's shape, not just different field names for the same thing (confirmed
+    against Anthropic's own docs, not assumed from the names alone)."""
+    return (u.get("input_tokens", 0), u.get("cache_read_input_tokens", 0),
+            u.get("cache_creation_input_tokens", 0), u.get("output_tokens", 0))
+
+
+USAGE_PARSERS: dict[str, Callable[[dict], tuple[int, int, int, int]]] = {"openai": _usage_openai, "anthropic": _usage_anthropic}
+
+
+def usage_of(body: dict, shape: str) -> tuple[int, int, int, int]:
+    """(fresh input, cached input, cache-write, output) tokens from a real response body, normalized the same
+    way regardless of which provider `shape` it came from. An unknown shape raises KeyError, the same "don't
+    guess, don't silently undercount" rule `Prices` already follows for an unlisted model."""
+    return USAGE_PARSERS[shape](body.get("usage") or {})
 
 
 def urllib_forward(method: str, url: str, headers: dict, body: bytes) -> tuple[int, dict, bytes]:
@@ -107,18 +132,19 @@ class Meter:
     def _record(self, path: str, model: str, payload: dict, resp_body: bytes, started: float) -> None:
         try:
             parsed = json.loads(resp_body)
-            prompt, cached, completion = usage_of(parsed)
-            cost = self.prices.cost_usd(model, prompt, cached, completion)
+            fresh, cached, cache_write, completion = usage_of(parsed, self.prices.shape(model))
+            cost = self.prices.cost_usd(model, fresh, cached, cache_write, completion)
         except (ValueError, KeyError):
-            parsed, prompt, cached, completion, cost = {}, 0, 0, 0, 0.0
+            parsed, fresh, cached, cache_write, completion, cost = {}, 0, 0, 0, 0, 0.0
         with self._lock:
             self.state["spent"] += cost
             self.state["calls"] += 1
             family = self.prices.base_model(model)
             self.state["by_model"][family] = round(self.state["by_model"].get(family, 0) + cost, 6)
             total = self.state["spent"]
-        entry = {"t": round(started, 3), "path": path, "model": model, "prompt": prompt, "cached": cached, "completion": completion,
-                 "cost": round(cost, 6), "total": round(total, 6), "ms": int((time.time() - started) * 1000)}
+        entry = {"t": round(started, 3), "path": path, "model": model, "input": fresh, "cached": cached,
+                 "cache_write": cache_write, "output": completion, "cost": round(cost, 6), "total": round(total, 6),
+                 "ms": int((time.time() - started) * 1000)}
         if self.log_bodies:
             entry["request"], entry["response"] = payload, parsed
         self._log(entry)

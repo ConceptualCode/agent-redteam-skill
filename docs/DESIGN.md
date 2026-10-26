@@ -158,15 +158,26 @@ checks it was meant to patch) and then removed along with the detectors themselv
 
 ## Cost control
 
-- **`pricing.py`** -- `Prices.load()` reads `prices.json` (`per_million_usd`); `base_model()` resolves a dated
-  snapshot name (`gpt-4.1-2026-01-01`) to its priced family by longest-prefix match; a model with no listed price
-  raises `KeyError` so nothing is ever spent unmeasured.
-- **`meter.py`** -- a real local HTTP reverse proxy in front of an OpenAI-compatible API (standard library only, no
-  dependency). Prices every call from its actual `usage` in the response, hard-refuses (`429`) once the budget's
-  spent, forwards only the `Authorization`/content headers (the key never leaves the user's own shell -- it's
-  forwarded, never stored or logged), and writes a JSONL spend log. A call already in flight when the budget is hit
-  can land a few cents over; a timed-out upstream call may still be billed even though it wasn't priced locally --
-  both are logged rather than hidden. `/_meter` reports a live summary (`preflight.py` polls it).
+- **`pricing.py`** -- `Prices.load()` reads `prices.json`'s `models` map: one explicit source of truth per family,
+  carrying both its prices (`input`/`cached_input`/`cache_write`/`output` per million tokens -- `cache_write`
+  defaults to 0 when a family doesn't have that tier) and its `shape` (which provider's usage-field names
+  `meter.py` should expect for that family). `base_model()` resolves a dated snapshot name
+  (`gpt-4.1-2026-01-01`) to its priced family by longest-prefix match; a model with no listed price raises
+  `KeyError` so nothing is ever spent unmeasured.
+- **`meter.py`** -- a real local HTTP reverse proxy in front of an OpenAI- or Anthropic-shaped API (standard
+  library only, no dependency; `--upstream` picks the provider, defaulting to OpenAI). This exists because neither
+  provider's own tooling has a hard spend cap -- confirmed directly in PromptFoo's source and its real `--help`
+  output: it tracks cost per call but has nothing like a global `--max-cost`. `usage_of(body, shape)` normalizes
+  whichever shape a response actually has (OpenAI reports a *total* prompt/input count with the cached subset
+  broken out as a detail to subtract; Anthropic's `input_tokens` is already the uncached count, with
+  `cache_read_input_tokens`/`cache_creation_input_tokens` as separate additive tiers -- confirmed against
+  Anthropic's own docs, not assumed from the field names looking similar) into one consistent
+  fresh/cached/cache-write/output split before pricing it. Hard-refuses (`429`) once the budget's spent, forwards
+  only the auth/content headers (`Authorization` or Anthropic's `x-api-key`, plus `anthropic-version` -- the key
+  never leaves the user's own shell, forwarded, never stored or logged), and writes a JSONL spend log. A call
+  already in flight when the budget is hit can land a few cents over; a timed-out upstream call may still be
+  billed even though it wasn't priced locally -- both are logged rather than hidden. `/_meter` reports a live
+  summary (`preflight.py` polls it).
 - **`estimate.py`** -- a cost preview (`tests * repeats * per-call cost`, doubled for a ceiling) before spending
   anything real. `mean_call_cost()` replaces the built-in defaults with real numbers from a meter log after a smoke
   test, so the estimate stops being a guess the moment real data exists.

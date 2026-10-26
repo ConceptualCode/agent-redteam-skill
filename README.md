@@ -18,7 +18,7 @@ written in the test's own words).
 | `contracts.py` | the two shapes everything shares: `Result` (replies and tool calls) and `RedTeamContext` (what the agent must never do) |
 | `detectors/` | generic checks: link or address off the allow-list, forbidden tool, bad tool argument, too many attempts, runaway output, tool loop |
 | `bridge.py`, `../assert_bridge.py` | one PromptFoo assertion that runs every universal detector |
-| `meter.py`, `pricing.py`, `prices.json` | a local proxy with a hard dollar cap (standard library only); update `prices.json` when prices change |
+| `meter.py`, `pricing.py`, `prices.json` | a local proxy with a hard dollar cap (standard library only), OpenAI- or Anthropic-shaped (`--upstream` picks the provider, `prices.json`'s `shape` per model picks how its usage response is parsed); update `prices.json` when prices change |
 | `preflight.py` | checks before spending: tools, key present (never printed), calls routed through the meter, generation kept local |
 | `estimate.py` | a cost preview; use `--meter-log` after a smoke test for real numbers |
 | `shape_check.py` | compares a fake record with real samples (invented, missing, wrongly typed fields) |
