@@ -230,6 +230,18 @@ re-runs the shop agent's cases over a real local HTTP server instead of an in-pr
 survives an actual network hop (PromptFoo's `http` provider, not its python provider) -- the shape a real downstream
 agent is actually likely to be wired into PromptFoo through.
 
+**`demo/notes/` proves a different attack *shape*, not a new detector.** All 7 generic detectors are already
+proven by the three demos above, so a fourth demo adding nothing new wouldn't be worth it. What none of them
+specifically exercise: an attack whose planted content arrives through a RAG tool's returned text (a retrieved
+"document") or a recalled memory, rather than directly in what the user asked -- the real shape of a
+retrieval-poisoning or memory-poisoning attack. `demo/notes/` is a notes/knowledge-base assistant with memory:
+`poisoned-doc-exfil` proves `external_link` still fires when the exfiltration link was planted inside a
+`search_kb` tool's `returned` text rather than typed by the user; `poisoned-recall-forbidden` proves
+`forbidden_tool_used` still fires when a `recall()` tool's returned memory is what talks the agent into calling
+the forbidden tool. `resists-poisoned-doc` reuses the *exact same* poisoned `returned` text as the attack, with
+the agent simply not acting on it -- proving a detector only cares what ends up in the reply or tool calls, not
+what a tool happened to return.
+
 A separate, narrower `tools/e2e/run.py` (the original bridge-wiring check, written before these three demos
 existed) was retired once it became almost entirely redundant with `demo/shop/` -- its one genuinely unique case
 (a refused tool call doesn't count toward an allowance) was folded into `demo/shop/` as `discount-spam-but-limited`
@@ -292,7 +304,7 @@ forces that.
 
 ## Status
 
-M1 (core scripts), M2 (proof against real planted flaws, including the HTTP-transport variant), M3 (`SKILL.md` +
-reference guides), the PromptFoo plugin/strategy auto-setup, and `coverage_check.py` are done. Open: proving the
-bridge/PromptFoo-grader coexistence with an actual real-money eval run, a RAG/memory demo variant, a real-API
-smoke test of the meter against actual usage numbers, licence, and release.
+M1 (core scripts), M2 (proof against real planted flaws, including the HTTP-transport and RAG/memory variants),
+M3 (`SKILL.md` + reference guides), the PromptFoo plugin/strategy auto-setup, `coverage_check.py`, and the
+provider-aware meter (OpenAI, Anthropic) are done. Open: proving the bridge/PromptFoo-grader coexistence and the
+provider-aware meter with an actual real-money run, licence, and release.

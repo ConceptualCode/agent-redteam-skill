@@ -1,9 +1,10 @@
 # agent-redteam-skill
 
 Tools and a playbook for red-teaming an AI agent that has access to tools and data. Status: **M1 (core scripts), M2 (proof against
-real planted flaws, including an HTTP-transport variant), M3 (`SKILL.md` + reference guides), and PromptFoo plugin/strategy
-auto-setup done.** Still open: proving the bridge/PromptFoo-grader coexistence with an actual real-money eval run, a RAG/memory
-demo variant, a real-API smoke test of the meter, licence and release. Nothing here is published. Start at `SKILL.md`.
+real planted flaws, including an HTTP-transport and a RAG/memory variant), M3 (`SKILL.md` + reference guides), PromptFoo
+plugin/strategy auto-setup, and a provider-aware meter (OpenAI, Anthropic) done.** Still open: proving the bridge/PromptFoo-grader
+coexistence with an actual real-money eval run, a real-API smoke test of the meter, licence and release. Nothing here is
+published. Start at `SKILL.md`.
 
 The aim: let a developer set up a red team for their own agent without stress. This skill sets up PromptFoo itself end to end --
 reads the agent's code, proposes which of PromptFoo's own 155 plugins and ~35 strategies actually apply, assembles the config,
@@ -37,7 +38,9 @@ attacks (no viewer, no generated attacks) is planned so PromptFoo can become opt
 of the 7 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
 proving the same detectors don't over-fire on ordinary behaviour. `demo/shop_http/` is the
 same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
-network hop. `tools/e2e/harness.py` is the shared machinery all of these build on.
+network hop. `demo/notes/` proves the same detectors still catch an attack when the planted content arrives via a RAG tool's
+returned text or a recalled memory, rather than the user's own words -- a different attack shape, not a new detector.
+`tools/e2e/harness.py` is the shared machinery all of these build on.
 
 ## Use
 Start at `SKILL.md` for the full workflow and the reasoning behind each step. The quick version:
@@ -73,6 +76,6 @@ Every module has tests that were mutation-checked; a mutation that survives mean
 ## Not done yet
 Proving the bridge/PromptFoo-grader coexistence with an actual real-money eval run (currently traced through code and config
 inspection, not a passing graded result -- see `docs/DESIGN.md`). A secret/planted-instruction-leak check has no detector
-in this toolkit today (removed, not replaced -- see `references/detectors.md`). A RAG/memory demo variant (shop/email/file
-and the HTTP transport are done), a real-API smoke test of the meter, licence and release. Also still open: public vs.
-private, the project's name, and which assistants/environments it explicitly targets.
+in this toolkit today (removed, not replaced -- see `references/detectors.md`). A real-API smoke test of the meter against
+actual OpenAI/Anthropic usage (the shape-aware parsing is unit-tested, not run against a live call), licence and release.
+Also still open: public vs. private, the project's name, and which assistants/environments it explicitly targets.

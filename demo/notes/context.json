@@ -1,0 +1,7 @@
+{
+  "forbidden_tools": ["wipe_memory"],
+  "allowed_hosts": ["notes.example"],
+  "allowances": {"search_kb": 4},
+  "max_reply_chars": 2000,
+  "max_tool_calls": 10
+}
