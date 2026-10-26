@@ -1,6 +1,6 @@
 # Writing a RedTeamContext
 
-A `RedTeamContext` is the one artifact that captures "what must never happen" for a specific agent, in terms general enough that the same detectors work for any domain. It has no concept of "ecommerce" or "email" built in -- those come from which fields you fill in and which values you put there.
+A `RedTeamContext` holds the slice of "what must never happen" that a deterministic check can actually verify -- not the complete picture for an agent. The rest comes from PromptFoo's own plugins (chosen by reading the agent's code, see `SKILL.md` step 5) and project-local custom checks. What it does cover is general enough that the same detectors work for any domain -- it has no concept of "ecommerce" or "email" built in, those come from which fields you fill in and which values you put there.
 
 ## Fields
 
@@ -49,8 +49,3 @@ These are real, complete, tested contexts from this project's own demo agents --
   "max_tool_calls": 8
 }
 ```
-
-## What this doesn't cover
-
-- **A secret or planted-instruction leak.** An earlier version of this had `secrets`/`markers` fields, checked by exact string match. Removed: a differently-spaced, encoded, or merely-described (not quoted) leak slipped straight past a literal match, and there's no bound on how many ways either can be phrased, so a string match can't be patched into something trustworthy. There's no replacement in this toolkit today -- an LLM judging the actual reply is the only sound mechanism for this, and that's a real cost (non-determinism, a real model call, a new attack surface of its own) worth weighing deliberately per project rather than building in by default.
-- **"This argument must match what an earlier tool call returned."** There's no field for a relational check -- e.g. "the address `send_reset_email` is called with must equal the `email_on_file` that `lookup_account` actually returned this turn," which is what catches an account-takeover-style attack (the agent redirecting an action to an address the user supplied rather than the one on record). The generic detectors only check a tool's own arguments against fixed bounds or allow-lists, never against another tool call's output. Write it as a small project-local Python function using `Result.tools` directly (each `ToolCall` has `.name`, `.args`, `.returned`) rather than editing the toolkit itself -- the toolkit is a shared dependency, this kind of check is specific to one agent's tools.

@@ -17,7 +17,7 @@ Don't over-ask if the user already described their agent -- extract what you can
 
 ## 1. Write a RedTeamContext
 
-This is the one artifact that captures "what must never happen," in the agent's own terms -- not domain-specific, just the primitives: hosts/email domains it should never reach outside of, tools it should never call, per-tool attempt allowances, numeric argument bounds, reply-length and tool-call ceilings. There's no field for a secret or planted-instruction leak -- see `references/writing-a-context.md`'s "What this doesn't cover."
+This captures the narrow slice of "what must never happen" that can be checked deterministically -- tool and permission boundaries, mainly: hosts/email domains it should never reach outside of, tools it should never call, per-tool attempt allowances, numeric argument bounds, reply-length and tool-call ceilings. It's one of three things that together cover an agent, not the complete picture by itself -- this context, the PromptFoo plugins chosen in step 5 (judgment-driven, LLM-graded), and a project-local custom check for anything neither reaches.
 
 Read `references/writing-a-context.md` for the full field reference and worked examples -- `demo/shop/context.json`, `demo/email/context.json`, and `demo/file/context.json` are three real, complete contexts for different kinds of agents (a shop assistant, an email assistant, a file-access assistant); use whichever is closest to the user's agent as a starting template rather than writing one from nothing.
 
