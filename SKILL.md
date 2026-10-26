@@ -24,10 +24,14 @@ Read `references/writing-a-context.md` for the full field reference and worked e
 Write the result as a JSON file (e.g. `context.json`) wherever the user's red-team work is living.
 
 **Then check the context isn't quietly empty where it matters.** `python -m agent_redteam.coverage_check context.json`
-reports, per field, whether it's actually configured or just running on nothing/a generic default -- a detector with
-nothing configured doesn't error, it just never fires, so every result in that category will read "held" regardless
-of what the agent actually does. Read every `not_configured` line out loud to the developer and ask whether that's
-because the agent genuinely has nothing there, or because it was never looked into -- don't let it pass silently.
+reports, per field, whether it's actually configured or just running on nothing/a generic default. Concretely: if
+the agent has a tool like `delete_everything` that should never be callable, but `forbidden_tools` was never
+filled in, the check for it still runs -- it just has an empty list to compare against, so it can never find a
+match. No error, no warning. The report says "held" even if the agent called `delete_everything` ten times in a
+row, because the check was never told what to look for in the first place. "Held" ends up meaning two very
+different things that look identical on paper: "we checked, it's fine" and "we never configured this at all."
+For every `not_configured` line `coverage_check.py` prints, ask the developer directly: does the agent genuinely
+have nothing to flag here, or did nobody fill this in yet? Don't let that question pass silently.
 
 **Before going further, decide whether a real model is even going to be called.** Steps 2-4 below (preflight, cost estimate, the meter) exist to protect against a real spend -- none of them apply if the agent under test is a scripted stand-in with no real model call, the way this project's own `demo/*/provider.py` agents work (useful when there's no running version of the user's agent yet, or when proving the detector pipeline itself is the point). In that case skip straight to step 5. This isn't spelled out by anything else in this workflow -- it's worth noticing on your own by comparing this numbered sequence against how the demos are actually structured, but stating it plainly here saves that inference.
 
