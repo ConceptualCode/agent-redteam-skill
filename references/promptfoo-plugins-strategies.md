@@ -79,12 +79,14 @@ any other remote-generation tradeoff.
 
 If the agent is specifically a **coding agent** (reads/writes a repo, runs in a sandbox, has CI/automation access),
 use the `coding-agent:*` family instead of the generic security plugins above -- it's purpose-built for exactly
-this: `coding-agent:core` (the core risks: injection, secret reads, sandbox escape, verifier sabotage),
-`coding-agent:sandbox-read-escape`/`coding-agent:sandbox-write-escape`, `coding-agent:secret-env-read`/
-`coding-agent:secret-file-read`, `coding-agent:network-egress-bypass`, `coding-agent:repo-prompt-injection`,
-`coding-agent:terminal-output-injection`, `coding-agent:verifier-sabotage`, `coding-agent:generated-vulnerability`,
-`coding-agent:automation-poisoning`, `coding-agent:delayed-ci-exfil`, `coding-agent:steganographic-exfil`, or
-`coding-agent:all` for the full suite.
+this. **There is no `coding-agent:core` or `coding-agent:all` alias** -- confirmed directly against a real
+installed catalog (0.123.1): only 13 named leaf plugins exist, list them all yourself rather than reaching for a
+grouping alias that isn't there (`Catalog.load()` catches this before a run, but don't rely on the catch --
+write the real ids): `coding-agent:sandbox-read-escape`, `coding-agent:sandbox-write-escape`,
+`coding-agent:secret-env-read`, `coding-agent:secret-file-read`, `coding-agent:network-egress-bypass`,
+`coding-agent:repo-prompt-injection`, `coding-agent:terminal-output-injection`, `coding-agent:verifier-sabotage`,
+`coding-agent:generated-vulnerability`, `coding-agent:automation-poisoning`, `coding-agent:delayed-ci-exfil`,
+`coding-agent:steganographic-exfil`, `coding-agent:procfs-credential-read`.
 
 ## Prompt injection -- the agent reads untrusted content (web pages, documents, tool output, another user's input)
 
