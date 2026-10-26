@@ -68,12 +68,20 @@ export ANTHROPIC_BASE_URL=http://127.0.0.1:8787           # the agent's own clie
 ```
 This is a real local reverse proxy: it prices every call from actual token usage and hard-refuses once the budget's spent -- confirmed PromptFoo itself has nothing like this (it tracks cost per call but has no global cap). The user's API key stays in their own shell -- never ask them to paste it into a file or a message; the meter just forwards the auth header through (`Authorization` for OpenAI, `x-api-key` for Anthropic) without storing it. Whichever model is actually priced in `prices.json` decides which usage-response shape gets parsed (`shape: "openai"` or `"anthropic"` per model family) -- a model with neither a price nor a matching shape is refused outright, the same "don't guess, don't silently undercount" rule the rest of this toolkit follows.
 
+**For Path A specifically, PromptFoo has its own default generation/grading model, separate from whatever the target uses** -- confirmed directly: it isn't necessarily one of the models in `prices.json`, and the meter refuses an unpriced model outright, exactly as designed. Set `redteam.provider: <provider>:<model>` in the config to point both generation and grading at a model the meter actually prices, rather than discovering the 403 mid-run.
+
 **This only protects spend that actually goes through the proxy.** If the agent's own HTTP client is hardcoded to the real API URL instead of reading `OPENAI_BASE_URL`/the SDK's base-url setting, the meter sees nothing and enforces nothing -- silently, with no warning, while the real API bills normally. Confirm it's actually in the path before relying on it for a real run: hit the real target once for real, then check `curl http://127.0.0.1:8787/_meter` shows a nonzero call count. If it's still at zero after a call that should have gone through, the target is bypassing the meter.
 
 ## 5. Get attacks
 
-Two paths. Default to proposing the PromptFoo-plugins path yourself -- that's the point of this skill: the
-developer shouldn't have to go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
+Two paths -- **not mutually exclusive.** Path A's baseline (`excessive-agency`, `prompt-extraction`, `hijacking`)
+is cheap, domain-agnostic, and applies "regardless of domain" for a reason: it still belongs in the run even when
+nothing else in the catalog fits and the real attacks end up entirely hand-written in Path B. "This agent's tools
+don't map onto the catalog" is a reason to skip the *domain-specific* plugin groups, never a reason to skip the
+baseline too -- confirmed as a real, recurring mistake: multiple independent runs of this exact workflow dropped
+Path A entirely as soon as they decided Path B fit better, skipping the baseline along with it. Default to
+proposing the PromptFoo-plugins path yourself -- that's the point of this skill: the developer shouldn't have to
+go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
 
 ### Path A -- PromptFoo's own plugins and strategies, set up automatically
 
@@ -84,7 +92,9 @@ developer shouldn't have to go set PromptFoo up by hand and pick plugins off a c
   injection surface, data it can leak, its business domain if it has one, whether it's RAG-based, whether it's a
   coding agent, whether it talks to minors.
 2. **Propose a plugin + strategy list with reasoning**, and say plainly which groups you're leaving out and why.
-  Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain.
+  Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain --
+  unless remote generation is staying off (see `promptfoo-setup.md`), in which case drop `hijacking`: confirmed
+  it needs PromptFoo's remote generation unconditionally and fails outright without it, no local fallback.
 3. **Validate the list against what's actually installed** -- `promptfoo_catalog.Catalog.load().unknown_plugins(...)`/
   `.unknown_strategies(...)` (also checked automatically by `build_config()` below) catches a typo or a plugin
   this PromptFoo version doesn't have, before anything is spent on it. If the pinned PromptFoo version is old or
@@ -117,9 +127,10 @@ developer shouldn't have to go set PromptFoo up by hand and pick plugins off a c
 
 ### Path B -- hand-written attacks against the real agent
 
-The most reliable option when PromptFoo's own plugins don't fit, or the developer wants full control over exact
-wording. Write each attack as a PromptFoo test case; `tools/e2e/harness.py` and the `demo/*/run.py` files show the
-pattern (a test per planted scenario, described in `assert_bridge.py`'s config). Wire the grading the same way:
+The most reliable option when PromptFoo's own *domain-specific* plugins don't fit, or the developer wants full
+control over exact wording -- **run alongside Path A's baseline, not instead of it.** Write each attack as a
+PromptFoo test case; `tools/e2e/harness.py` and the `demo/*/run.py` files show the pattern (a test per planted
+scenario, described in `assert_bridge.py`'s config). Wire the grading the same way:
 `value: file://.../agent-redteam-setup/scripts/assert_bridge.py` with `config: {context_file: <path>}`.
 `references/detectors.md` lists every detector and the exact wording/shape each needs to trigger.
 
@@ -127,6 +138,12 @@ If the agent needs a check none of the 7 generic detectors cover -- something sp
 secret/planted-instruction leak (there is no deterministic detector for either, see `references/detectors.md`) --
 write it as a small project-local Python function and wire it in as a second `type: python` PromptFoo assertion
 alongside the bridge, rather than trying to force it into this shared toolkit.
+
+**Before running either path for real, audit the config file itself, not your own memory of what you just
+did:** `python -m agent_redteam.redteam_config_check promptfooconfig.yaml` reads the real file and reports
+whether `assert_bridge.py` is actually wired in and which baseline plugins (if any) are missing. Built after
+real runs of this exact workflow repeatedly skipped the baseline the moment Path B looked like the better
+fit -- a self-report of "I considered the baseline" isn't evidence; what the file actually says is.
 
 ## 6. Run it, then read the real results, not just pass/fail
 
@@ -165,4 +182,4 @@ This is a developer self-check, not a substitute for an independent security rev
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
-- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`, with a real example of each one catching something.
+- `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`/`redteam_config_check`, with a real example of each one catching something.

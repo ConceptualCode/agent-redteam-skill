@@ -8,7 +8,7 @@ for one) follows; this doc is the architecture underneath it. `README.md` is the
 Red-teaming your own agent is easy to get wrong in a way that still *looks* like success: a fake tool response that
 doesn't resemble the real one, an attack that never actually reached the model, a defense graded against the exact
 words it was written to beat. A deterministic Python function decides pass/fail -- never an LLM's impression of
-whether something "seemed okay" -- and four honesty checks exist specifically to catch the test lying to itself
+whether something "seemed okay" -- and five honesty checks exist specifically to catch the test lying to itself
 before a "held" result gets trusted.
 
 The other half of the problem: PromptFoo itself has a real, broad red-team feature set (155 plugins, ~35
@@ -38,10 +38,12 @@ summarize.py                    -- results.json -> per-attack "x of N", controls
 Cost control sits beside this, not inside it: `meter.py` (a local spend-capped proxy), `pricing.py` (token math),
 `estimate.py` (a preview before spending), `preflight.py` (everything that must be true before either runs).
 
-Four honesty checks sit outside the grading path and get called deliberately: `shape_check.py` (is the fake data
+Five honesty checks sit outside the grading path and get called deliberately: `shape_check.py` (is the fake data
 realistic?), `vacuous_check.py` (did the attack actually reach the model? -- also wired *into* the grading path, see
 below), `overfit_check.py` (does the defense just quote the attacks?), `coverage_check.py` (did the context
-actually configure anything for a detector to find?).
+actually configure anything for a detector to find?), `redteam_config_check.py` (did the real promptfooconfig.yaml
+actually follow this skill's own workflow -- the bridge wired in, the baseline plugins present -- or does a run's
+self-report just say so?).
 
 ## Data model (`contracts.py`)
 
@@ -143,6 +145,14 @@ written after observing the failure mode it closes, not speculatively.
   two -- flags every link/address, almost certainly a mistake). Works on the *raw* JSON dict, not a constructed
   `RedTeamContext` -- once defaults are applied, an explicit `max_tool_calls: 10` and a silently-defaulted one are
   indistinguishable, so the check has to run before that information is lost.
+- **`redteam_config_check.py`** -- the same idea as `coverage_check.py`, one level up: not "did the context give a
+  detector anything to find" but "did the actual `promptfooconfig.yaml` follow this skill's own documented
+  workflow." Built after a real external-validation exercise found three independent sessions each read SKILL.md
+  fresh and still dropped the baseline plugins (`excessive-agency`/`prompt-extraction`/`hijacking`) the moment
+  Path B looked like the better fit -- their own self-reports described following the process correctly; the real
+  config files said otherwise. `audit(yaml_text)` reads the file directly for `assert_bridge.py` wiring and which
+  baseline plugins (if any) a `redteam.plugins` list is missing -- deliberately not a general YAML parser, just
+  the shape `build_config()` itself generates.
 
 ## Letting an LLM judge, considered and rejected as a blanket replacement
 

@@ -54,6 +54,13 @@ Strategies: `basic` (the plugin's own unwrapped test) plus `jailbreak` (iterativ
 judge -- no remote generation needed) for a cheap first pass at whether a simple adversarial wrapper changes the
 outcome.
 
+**`hijacking` needs PromptFoo's remote generation unconditionally** -- confirmed directly: with
+`PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true` set (`promptfoo-setup.md`'s recommended
+local-only default), it generates 0/0 tests and fails outright, no fallback to a local attacker
+model the way most other plugins have. If remote generation is staying off, drop `hijacking` from
+the baseline rather than including it and having it silently fail -- say so plainly, the same as
+any other remote-generation tradeoff.
+
 ## Tool & permission boundaries -- the agent calls tools, has roles, or acts on another system
 
 | Plugin | Catches |

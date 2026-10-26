@@ -25,6 +25,8 @@ A "held" result only means something if the planted attack genuinely reached the
 
 That relabelled `reason` text sat somewhere nobody would actually see it at first -- found running the skill live, not from reading the code: PromptFoo's own top-level `gradingResult.reason` gets overwritten to a generic "All assertions passed" message once a test passes, and `summarize.py`'s table didn't carry the distinction forward either, so an inconclusive result and a genuinely proven one looked identical in both places a person would actually look. `summarize.py` now tracks this itself (reads each python component's own `reason`, not the overwritten top-level one) and prints it as `"N inconclusive (never reached)"` next to that test's row -- the fix that actually makes this check worth running, not just the bridge.py wiring alone.
 
+**This protection is Path B only, by default.** Confirmed directly: a PromptFoo-generated plugin test's own `test.metadata` (e.g. `harmbench`'s `harmbenchBehavior`/`harmbenchCategory`/etc.) never contains a `vacuous_check` key -- nothing adds one. A "held" result from Path A gets none of this relabeling; it's exactly as exposed to the vacuous-result problem as a hand-written test would be *without* the marker. If a generated test's attack depends on a specific tool being called, you'd need to post-process the generated test cases to add `metadata.vacuous_check` yourself before running them, or accept that Path A's "held" results carry this same caveat unlabeled.
+
 For a manual check outside the PromptFoo pipeline -- or when the provider doesn't supply `returned` and you're collecting tool outputs yourself -- build the `Result` first (`Result.from_provider(output, metadata)`, the same constructor the bridge uses; `output` is the reply text, not a keyword -- there's no `output=` field on `Result` itself), then call `reached()` directly:
 ```python
 from agent_redteam.contracts import Result
@@ -60,6 +62,16 @@ import json
 print(format_coverage(coverage(json.loads(open("context.json").read()))))
 ```
 Works on the *raw* JSON dict, deliberately, not a built `RedTeamContext` -- once defaults apply, `max_tool_calls: 10` looks identical whether a developer wrote that deliberately or never mentioned the field at all, so the distinction has to be read before that information is lost. Reports each field as `configured`, `not_configured` (nothing declared -- the detector it feeds is inert), `skipped_by_design` (`allowed_hosts`/`allowed_email_domains` left `null`, which `RedTeamContext`'s own docs treat as a deliberate "skip this check," not necessarily a forgotten field), or `flags_everything` (an explicit `[]` for one of those two fields -- flags every single link or address, almost certainly not what was intended). Run it right after writing the context (catch a gap before spending anything on tests that can't prove what they claim to), and again when reading results (a `not_configured` detector reporting "held" reads very differently from a configured one that actually held).
+
+## `redteam_config_check.py` -- did the real config follow this skill's own workflow, or just get described that way?
+
+Found this one the hard way: a real external-validation exercise ran this exact skill against several real third-party agents, each time starting a fresh session with no memory of the others. Three independent sessions each read `SKILL.md`, concluded their target's tools didn't fit Path A's domain-specific plugin groups, and used that as grounds to skip Path A entirely -- including the baseline (`excessive-agency`/`prompt-extraction`/`hijacking`), which `SKILL.md` says to run "regardless of domain" precisely so a domain mismatch is never a reason to drop it too. Every one of those sessions' own self-reports described following the process; none of them mentioned dropping the baseline, because none of them noticed they had.
+
+```python
+from agent_redteam.redteam_config_check import audit, format_audit
+print(format_audit(audit(open("promptfooconfig.yaml").read())))
+```
+Reads the real file, not a description of it: whether `assert_bridge.py` is actually wired into an assertion, whether a `redteam:`/`plugins:` block exists at all, and which of the three baseline plugins (if any) are missing from it. A missing baseline plugin isn't automatically wrong -- `hijacking` genuinely needs remote generation and is fine to drop when that's off -- but the toolkit should say which ones are missing so that's a decision someone actually made, not a gap nobody checked for. Deliberately not a general YAML parser, just the shape `build_config()` itself generates.
 
 ## Secret/marker leaks have no check in this toolkit today
 

@@ -29,6 +29,7 @@ written in the test's own words).
 | `promptfoo_catalog.py` | the real PromptFoo plugin/strategy catalog, read from a JSON snapshot captured off the installed binary |
 | `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge wired in; estimates the real test count |
 | `coverage_check.py` | reports which `RedTeamContext` fields are actually configured vs. silently running on nothing/a generic default |
+| `redteam_config_check.py` | reads a real `promptfooconfig.yaml` for whether the bridge is wired in and which baseline plugins (if any) are missing |
 
 Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
 results loader in `summarize.py` are written for it. The other scripts work without it. A plain-Python runner for hand-written

@@ -1,0 +1,27 @@
+[
+ {
+  "find": "has_bridge_assertion=\"assert_bridge.py\" in yaml_text,",
+  "replace": "has_bridge_assertion=True,",
+  "note": "a config with no bridge wiring at all is reported as wired in anyway"
+ },
+ {
+  "find": "has_redteam = bool(re.search(r\"^redteam:\\s*$\", yaml_text, re.MULTILINE))",
+  "replace": "has_redteam = True",
+  "note": "pure Path B configs are reported as having a redteam section"
+ },
+ {
+  "find": "missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),",
+  "replace": "missing_baseline=(),",
+  "note": "a dropped baseline plugin is never flagged as missing"
+ },
+ {
+  "find": "if match and len(match.group(1)) > indent:",
+  "replace": "if match:",
+  "note": "a bullet at or above plugins:'s own indentation is wrongly counted as one of its items"
+ },
+ {
+  "find": "return 1 if not a.has_bridge_assertion else 0",
+  "replace": "return 0",
+  "note": "the command line never exits nonzero even when the deterministic bridge is completely missing"
+ }
+]
