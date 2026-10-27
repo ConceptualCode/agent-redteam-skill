@@ -25,7 +25,7 @@ whose agent you want to test.
     git clone --depth 1 https://github.com/ConceptualCode/agent-redteam-skill /tmp/agent-redteam-skill
     mkdir -p ~/.claude/skills && cp -r /tmp/agent-redteam-skill/agent-redteam ~/.claude/skills/
 
-Needs Python 3.9+, and Node 22.22+ for PromptFoo runs. You do not install PromptFoo: the skill installs the pinned version
+Needs Python 3.10+, and Node 22.22+ for PromptFoo runs. You do not install PromptFoo: the skill installs the pinned version
 (0.123.1, the one its plugin catalog was captured from) into a private, git-ignored `.agent-redteam/` folder in the project
 being tested the first time it needs it. It never installs Node; if Node is missing or too old it stops and tells you how.
 
@@ -74,7 +74,7 @@ Expect the PromptFoo install to take a few minutes the first time, and runs to c
 | `canary.py`, `../assert_canary.py` | judges agents with a shell/code/file tool by what the tools did: planted fake secrets and files, a whole-sandbox snapshot, an egress proxy |
 | `replay_check.py` | re-sends the final prompt of each adaptive attack through the real agent so the deterministic checks can judge it |
 
-Python 3.9+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
+Python 3.10+, standard library only. Today PromptFoo (needs Node 22.22+) is the runner and viewer: `assert_bridge.py` and the
 results loader in `summarize.py` are written for it. The other scripts work without it. A plain-Python runner for hand-written
 attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
