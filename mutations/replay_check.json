@@ -1,0 +1,62 @@
+[
+  {
+    "find": "        if not prompt:\n            continue",
+    "replace": "        if False:\n            continue",
+    "note": "results with no final prompt must be skipped"
+  },
+  {
+    "find": "\"assert_bridge\", \"assert_canary\", \"oracle_assert\"",
+    "replace": "\"assert_bridge\", \"assert_canary\"",
+    "note": "a project oracle must not count as the LLM grader"
+  },
+  {
+    "find": "\"assert_bridge\", \"assert_canary\", \"oracle_assert\"",
+    "replace": "\"assert_bridge\", \"oracle_assert\"",
+    "note": "the canary must not count as the LLM grader"
+  },
+  {
+    "find": "\"assert_bridge\", \"assert_canary\", \"oracle_assert\"",
+    "replace": "\"assert_canary\", \"oracle_assert\"",
+    "note": "the bridge must not count as the LLM grader"
+  },
+  {
+    "find": "tm.get(\"pluginId\")",
+    "replace": "tm.get(\"strategyId\")",
+    "note": "the plugin must be the plugin"
+  },
+  {
+    "find": "(r.get(\"response\") or {}).get(\"metadata\") or {}",
+    "replace": "r[\"response\"][\"metadata\"]",
+    "note": "a result without a response must not crash"
+  },
+  {
+    "find": "(r.get(\"gradingResult\") or {}).get(\"componentResults\") or []",
+    "replace": "r[\"gradingResult\"][\"componentResults\"]",
+    "note": "a result without grading must not crash"
+  },
+  {
+    "find": "        if r.get(\"agent_error\"):\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
+    "replace": "        if r[\"oracle\"]:\n            d[\"confirmed\"] += 1\n        elif r.get(\"agent_error\"):\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
+    "note": "an errored run must never count as confirmed"
+  },
+  {
+    "find": "d[\"runs\"] += 1",
+    "replace": "d[\"runs\"] += 0",
+    "note": "every replay must be counted"
+  },
+  {
+    "find": "\"reply\": r.get(\"output\", \"\")[:300]",
+    "replace": "\"reply\": r.get(\"output\", \"\")",
+    "note": "stored replies are cut to 300 characters"
+  },
+  {
+    "find": "for i in range(a.runs):",
+    "replace": "for i in range(1):",
+    "note": "--runs must be honoured"
+  },
+  {
+    "find": "\"tools\": [t[\"name\"] for t in md.get(\"tools\", [])]",
+    "replace": "\"tools\": []",
+    "note": "the tools used must be recorded"
+  }
+]

@@ -76,3 +76,7 @@ file, clear the table row, whatever applies -- the same way the HTTP pattern abo
 `session_id`. Don't rely on PromptFoo running your `call_api` in a fresh process each time either;
 nothing in its docs promises that, and a provider that's safe only because of accidental process
 isolation will break the moment that assumption stops holding.
+
+## See also
+- `multi-agent-systems.md` -- when the stateful agent sits behind a router.
+- `detectors.md` -- what `allowances` and `max_tool_calls` check.

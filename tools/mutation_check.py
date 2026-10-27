@@ -7,14 +7,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
 def run_tests(target: str, cwd: Path) -> bool:
-    proc = subprocess.run([sys.executable, "-m", "pytest", target, "-x", "-q", "--no-header", "-p", "no:cacheprovider"],
-                          cwd=cwd, capture_output=True, text=True)
+    # A fresh bytecode directory per run: Python reuses a .pyc when the source's size and mtime-second match, and a
+    # same-size mutation (`return 1` -> `return 0`) made within a second of the last run would otherwise run stale code.
+    with tempfile.TemporaryDirectory() as pycache:
+        proc = subprocess.run([sys.executable, "-m", "pytest", target, "-x", "-q", "--no-header", "-p", "no:cacheprovider"],
+                              cwd=cwd, capture_output=True, text=True, env={**os.environ, "PYTHONPYCACHEPREFIX": pycache})
     return proc.returncode == 0
 
 

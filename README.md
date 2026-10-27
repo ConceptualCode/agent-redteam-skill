@@ -115,7 +115,7 @@ Run the mutation checker with the same Python that has `pytest`; it runs the tes
 ### Common changes
 - **New or changed module**: add tests, then a mutation file (`mutations/<name>.json`, a list of `{"find", "replace", "note"}`
   where `find` occurs exactly once in the source) and an entry in `tools/mutation_manifest.json`. A mutation that survives means
-  a weak test. Not yet done for `canary.py`, `replay_check.py` and `setup_promptfoo.py`.
+  a weak test.
 - **New detector**: add it to `detectors/core.py` and the `DETECTORS` tuple, its field to `RedTeamContext.from_dict` and
   `coverage_check.FIELDS`, a planted flaw plus a control in a template, and a row in `references/detectors.md`.
 - **Bumping PromptFoo**: change the version in `package.json`, `npm install`, run `agent-redteam/scripts/capture_promptfoo_catalog.py`
@@ -138,5 +138,4 @@ package. To update, they pull and copy the folder again.
   the deterministic checks never run on them; those attacks must be replayed (`replay_check`).
 - The meter has been run against live OpenAI calls; the Anthropic usage parsing is unit-tested only.
 - The canary checks see only what they plant: reads of unplanted files and raw-socket network traffic are invisible.
-- `replay_check.py` and `setup_promptfoo.py` aren't mutation-checked yet.
 - Tested as a Claude Code skill only; other assistants and environments are untested.

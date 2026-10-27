@@ -1,0 +1,67 @@
+[
+  {
+    "find": "if node < MIN_NODE:",
+    "replace": "if node <= MIN_NODE:",
+    "note": "the minimum Node version itself must be accepted"
+  },
+  {
+    "find": "if node is None:",
+    "replace": "if False:",
+    "note": "a missing Node must be reported"
+  },
+  {
+    "find": "if installed_version(prefix) == version and binary_path(prefix).exists():",
+    "replace": "if installed_version(prefix) == version:",
+    "note": "a missing binary must trigger a reinstall"
+  },
+  {
+    "find": "if installed_version(prefix) == version and binary_path(prefix).exists():",
+    "replace": "if binary_path(prefix).exists():",
+    "note": "a different installed version must be reinstalled"
+  },
+  {
+    "find": "(prefix / \".gitignore\").write_text(\"*\\n\")",
+    "replace": "pass",
+    "note": "the install folder must be git-ignored"
+  },
+  {
+    "find": "\"--no-audit\", \"--no-fund\", \"--save-exact\"",
+    "replace": "\"--no-audit\", \"--no-fund\"",
+    "note": "the version must be pinned exactly"
+  },
+  {
+    "find": "\"--no-audit\", \"--no-fund\",",
+    "replace": "\"--no-fund\",",
+    "note": "npm audit must stay off"
+  },
+  {
+    "find": "[-600:]",
+    "replace": "[:600]",
+    "note": "the end of a long npm error is the useful part"
+  },
+  {
+    "find": "if not binary_path(prefix).exists():\n        raise",
+    "replace": "if False:\n        raise",
+    "note": "a missing binary after install must be an error"
+  },
+  {
+    "find": "if proc.returncode != 0:",
+    "replace": "if False:",
+    "note": "an npm failure must be an error"
+  },
+  {
+    "find": "return json.loads(pkg.read_text()).get(\"version\")",
+    "replace": "return None",
+    "note": "the installed version must be read"
+  },
+  {
+    "find": "except (OSError, ValueError):\n        return None",
+    "replace": "except OSError:\n        return None",
+    "note": "a broken package.json must read as not installed"
+  },
+  {
+    "find": "        print(f\"setup failed: {e}\", file=sys.stderr)\n        return 1",
+    "replace": "        print(f\"setup failed: {e}\", file=sys.stderr)\n        return 0",
+    "note": "a failed setup must exit non-zero"
+  }
+]
