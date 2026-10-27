@@ -51,16 +51,53 @@ def strategies_sending_replies_remote(strategies: list[str]) -> list[str]:
     return [s for s in strategies if s in REMOTE_REPLY_STRATEGIES]
 
 
-def redteam_run_args(config_path: str, strategies: list[str], remote_replies_approved: bool) -> list[str]:
-    """argv for `promptfoo redteam run`. Adds `--remote` only if the developer explicitly approved replies leaving
-    the machine AND an adaptive strategy is actually chosen; raises if one is chosen without approval, rather than
-    letting the run fail halfway (after generation has already spent money) or silently dropping the strategy."""
+def _check_replies_approved(strategies: list[str], remote_replies_approved: bool) -> list[str]:
     needs = strategies_sending_replies_remote(strategies)
     if needs and not remote_replies_approved:
         raise ValueError(f"{needs} send the agent's replies to PromptFoo's servers; get the developer's explicit "
                          "approval first, or use a local strategy such as jailbreak-templates")
-    args = ["promptfoo", "redteam", "run", "-c", config_path, "--force", "--no-cache", "-j", "1"]
+    return needs
+
+
+def redteam_run_args(config_path: str, strategies: list[str], remote_replies_approved: bool,
+                     promptfoo: str = "promptfoo") -> list[str]:
+    """argv for `promptfoo redteam run` (generate and evaluate in one go). Adds `--remote` only if the developer
+    explicitly approved replies leaving the machine AND an adaptive strategy is actually chosen; raises if one is
+    chosen without approval, rather than letting the run fail halfway (after generation has already spent money)
+    or silently dropping the strategy. `promptfoo` is the binary to run: pass the project's own install path."""
+    needs = _check_replies_approved(strategies, remote_replies_approved)
+    args = [promptfoo, "redteam", "run", "-c", config_path, "--force", "--no-cache", "-j", "1"]
     return args + (["--remote"] if needs else [])
+
+
+def redteam_generate_args(config_path: str, output_path: str, strategies: list[str], remote_replies_approved: bool,
+                          promptfoo: str = "promptfoo") -> list[str]:
+    """argv for `promptfoo redteam generate`: writes the attack prompts to `output_path` and runs nothing, so the
+    developer can read what they name and plant it before anything is sent to the agent. Evaluate the file with
+    `redteam_eval_args`. Same approval rule for `--remote` as `redteam_run_args`."""
+    needs = _check_replies_approved(strategies, remote_replies_approved)
+    args = [promptfoo, "redteam", "generate", "-c", config_path, "-o", output_path, "--force", "--no-cache"]
+    return args + (["--remote"] if needs else [])
+
+
+def redteam_eval_args(generated_path: str, strategies: list[str], remote_replies_approved: bool,
+                      output_path: str | None = None, promptfoo: str = "promptfoo") -> list[str]:
+    """argv for `promptfoo redteam eval` on a file `redteam_generate_args` wrote. One test at a time (`-j 1`) because a
+    provider sharing one fixture, container or workspace is corrupted by concurrent tests."""
+    needs = _check_replies_approved(strategies, remote_replies_approved)
+    args = [promptfoo, "redteam", "eval", "-c", generated_path, "--no-cache", "-j", "1"]
+    if output_path:
+        args += ["-o", output_path]
+    return args + (["--remote"] if needs else [])
+
+
+def view_command(config_dir: str, promptfoo: str = "promptfoo", node_bin_dir: str | None = None) -> str:
+    """The exact shell line to put at the end of the report. PromptFoo needs Node 22.22+, and the `node` first on a
+    developer's PATH is often older (a bare `promptfoo view` then fails), so the Node that preflight accepted goes
+    in front of PATH. Paths are quoted, since a project path may contain spaces."""
+    import shlex
+    path = f"PATH={shlex.quote(node_bin_dir)}:$PATH " if node_bin_dir else ""
+    return f"PROMPTFOO_CONFIG_DIR={shlex.quote(config_dir)} {path}{shlex.quote(promptfoo)} view"
 
 
 @dataclass(frozen=True)

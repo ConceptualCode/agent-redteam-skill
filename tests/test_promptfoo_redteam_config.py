@@ -5,7 +5,8 @@ import pytest
 from agent_redteam.promptfoo_catalog import Catalog
 from agent_redteam.promptfoo_redteam_config import (
     build_config, estimate_test_count, http_target, needs_generation_spend, python_target,
-    model_role_warnings, redteam_run_args, strategies_sending_replies_remote,
+    model_role_warnings, redteam_eval_args, redteam_generate_args, redteam_run_args,
+    strategies_sending_replies_remote, view_command,
 )
 
 
@@ -83,6 +84,38 @@ def test_run_args_add_remote_only_with_approval_and_an_adaptive_strategy():
 def test_run_args_refuse_an_adaptive_strategy_without_approval():
     with pytest.raises(ValueError, match="explicit approval"):
         redteam_run_args("c.yaml", ["jailbreak"], remote_replies_approved=False)
+
+
+def test_generate_writes_the_prompts_and_runs_nothing():
+    a = redteam_generate_args("c.yaml", "gen.yaml", ["basic"], remote_replies_approved=False, promptfoo="/p/promptfoo")
+    assert a[:3] == ["/p/promptfoo", "redteam", "generate"]
+    assert a[a.index("-o") + 1] == "gen.yaml" and "-c" in a and "run" not in a and "eval" not in a
+
+
+def test_eval_runs_one_test_at_a_time_on_the_generated_file():
+    a = redteam_eval_args("gen.yaml", ["basic"], remote_replies_approved=False, output_path="r.json")
+    assert a[:3] == ["promptfoo", "redteam", "eval"]
+    assert a[a.index("-c") + 1] == "gen.yaml" and a[a.index("-j") + 1] == "1"
+    assert a[a.index("-o") + 1] == "r.json" and "-o" not in redteam_eval_args("g.yaml", ["basic"], False)
+
+
+def test_generate_and_eval_apply_the_same_remote_rule_as_run():
+    for fn in (lambda s, ok: redteam_generate_args("c", "o", s, ok), lambda s, ok: redteam_eval_args("g", s, ok)):
+        assert "--remote" in fn(["jailbreak"], True)
+        assert "--remote" not in fn(["jailbreak-templates"], True)
+        with pytest.raises(ValueError, match="explicit approval"):
+            fn(["jailbreak"], False)
+
+
+def test_run_args_use_the_given_binary():
+    assert redteam_run_args("c.yaml", ["basic"], False, promptfoo="/x/promptfoo")[0] == "/x/promptfoo"
+    assert redteam_eval_args("g.yaml", ["basic"], False, promptfoo="/x/promptfoo")[0] == "/x/promptfoo"
+
+
+def test_view_command_puts_the_accepted_node_first_and_quotes_paths():
+    c = view_command("/p/my pf", promptfoo="/p/.agent-redteam/node_modules/.bin/promptfoo", node_bin_dir="/n/bin")
+    assert c == "PROMPTFOO_CONFIG_DIR='/p/my pf' PATH=/n/bin:$PATH /p/.agent-redteam/node_modules/.bin/promptfoo view"
+    assert "PATH=" not in view_command("/p/pf")
 
 
 def test_generator_and_judge_models_are_written_to_the_config(tmp_path):

@@ -41,7 +41,7 @@ don't work around it silently by swapping the strategy.
 
 Workflow: (1) tell the developer which chosen strategies do this (`strategies_sending_replies_remote()`); (2) offer
 the local alternative (`jailbreak-templates`, `base64`, `rot13`, ... -- fixed wrappers, nothing leaves the machine,
-less adaptive); (3) only on an explicit yes, run `redteam_run_args(config, strategies, remote_replies_approved=True)`.
+less adaptive); (3) only on an explicit yes, build the argv with `redteam_generate_args`/`redteam_eval_args` (or `redteam_run_args`) and `remote_replies_approved=True`.
 The remote attacker's own calls are PromptFoo's, not routed through the local meter, so the budget cap covers only
 the target and the local grader.
 

@@ -151,10 +151,22 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   server-side across separate requests (a session/conversation id) rather than doing everything in one call**, a
   plain `http_target` can't exercise `allowances`/`max_tool_calls` at all -- see `references/stateful-providers.md`
   before wiring either target shape.
-6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`; build the argv with
-  `redteam_run_args(config, strategies, remote_replies_approved=False)` rather than typing it, since it adds `-j 1` (one test at a
-  time: a provider that shares one canary fixture, a container or a workspace is corrupted by PromptFoo's default of 4
-  concurrent tests) as well as `--force --no-cache`. Set `CI=true` in the environment first --
+6. **Generate, read, plant, then run.** Do not use `promptfoo redteam run` when the agent has a shell, code or file tool:
+  it generates and evaluates in one command, and PromptFoo writes different attacks on every generation, naming files,
+  processes and repos of its own. If the fixture lacks them the agent only answers "not found", the test reads as held,
+  and nothing was tested. So split it, building each argv with the helpers rather than typing it (they add the
+  flags below and refuse an adaptive strategy without approval):
+  1. `redteam_generate_args(config, "redteam.yaml", strategies, remote_replies_approved=False, promptfoo=<project binary>)`.
+     This writes the attacks and sends none of them to the agent.
+  2. Read `redteam.yaml` (every `prompt`/`vars` entry): list each path, process, repo, tool and host the attacks name, plant
+     what the agent should find (step 7, "Did the attack's named target exist?"), and note anything you cannot provide.
+  3. `redteam_eval_args("redteam.yaml", strategies, remote_replies_approved=False, output_path="results.json", promptfoo=<project binary>)`.
+     It adds `-j 1` (one test at a time: a provider that shares one canary fixture, a container or a workspace is
+     corrupted by PromptFoo's default of 4 concurrent tests). Evaluating the same file again reuses the same attacks,
+     so a re-run after a fix compares like with like; only generate again when you want new attacks.
+  `redteam_run_args(...)` (the one-command `redteam run`, with `--force --no-cache`) is fine for agents with no
+  shell/code/file tool, where there is nothing to plant. Pass `promptfoo=` the project's own binary (`preflight --project`
+  prints it); the default is a bare `promptfoo` that may not be on PATH. Set `CI=true` in the environment first --
   PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
   non-interactive run and skips it, the same env var any CI system sets). Don't fabricate a developer's email to
@@ -167,7 +179,7 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   is more than remote *generation* sends (only the target description + plugin config). So: default to the local
   `jailbreak-templates` and say plainly that it is less adaptive; if the developer wants the adaptive strategy, tell
   them replies will leave the machine, get an explicit yes, then run it for them with
-  `redteam_run_args(config, strategies, remote_replies_approved=True)` (adds `--remote`; it raises if an adaptive
+  the same helpers with `remote_replies_approved=True` (adds `--remote`; they raise if an adaptive
   strategy is chosen without approval). Don't add `--remote` on your own, and don't drop the strategy silently.
   `promptfoo_redteam_config.strategies_sending_replies_remote()` tells you which chosen strategies need this.
   Calls the remote attacker makes happen on PromptFoo's side and don't pass through the local meter -- the meter
@@ -216,7 +228,7 @@ fit -- a self-report of "I considered the baseline" isn't evidence; what the fil
 
 ```
 promptfoo eval -c promptfooconfig.yaml -o results.json          # Path B
-promptfoo export eval <id> -o results.json                      # Path A -- `redteam run` stores the eval and prints
+promptfoo export eval <id> -o results.json                      # Path A -- an eval stores itself and prints
 python -m agent_redteam.summarize results.json                  # its id ("Red team complete (ID: eval-...)"); use that id
 ```
 **Keep the results somewhere the developer can open them, and tell them how.** PromptFoo already stores every eval
@@ -225,7 +237,9 @@ browser UI with the full matrix, each reply, each assertion's verdict and reason
 `redteam run` evals. Don't leave that database in a temp/scratch directory (a scratchpad was wiped between sessions
 in a real run and the results went with it) -- point `PROMPTFOO_CONFIG_DIR` at a folder inside the developer's
 project (or copy it there when the run ends), keep the config, provider, context, `results.json` and summary beside
-it, and end the report with the exact command, e.g. `PROMPTFOO_CONFIG_DIR=<dir> promptfoo view`. Don't enable
+it, and end the report with the exact command from `view_command(config_dir, promptfoo=<project binary>, node_bin_dir=<the Node preflight accepted>)`.
+That helper puts the accepted Node first on PATH: the `node` first on a developer's PATH is often older than 22.22, and
+a bare `promptfoo view` then fails. Run the command yourself once to confirm it starts before putting it in the report. Don't enable
 PromptFoo's sharing to get a link (`PROMPTFOO_DISABLE_SHARING` stays on): that uploads the results.
 
 `summarize.py` groups by test id across repeats, separates controls from attacks (red-team tests are named
@@ -242,8 +256,8 @@ This is the step most red-team setups skip, and it's the one most likely to make
 - **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. If the provider supplies what each tool returned (`metadata.tools[i].returned`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test and `bridge.grade()` checks this automatically, relabelling the reason `"inconclusive: ..."` rather than letting an untested path read as a proven one. Otherwise, call `vacuous_check.py`'s `reached()`/`final_status()` by hand.
 - **Did the attack's named target exist?** PromptFoo's `coding-agent:*` scenarios name paths and tools of their own
   (`../outside-owned/release-notes.md`, a git repo, a browser profile). If the fixture lacks them, the agent only
-  answers "not found" and the result reads as held while nothing was tested. Read the generated prompts (the
-  `redteam.yaml` it writes, or `results.json`), and create what they name: `CanaryFixture(plant={...})` plants files
+  answers "not found" and the result reads as held while nothing was tested. Read the generated prompts *before* running them (step 6 splits generate from eval for this),
+  and create what they name: `CanaryFixture(plant={...})` plants files
   outside the workspace, and the container image needs the tools (e.g. `git`). Report what you could not provide as
   inconclusive.
 - **Did the deterministic checks actually run on this test?** Adaptive strategies (`jailbreak`, ...) replace the
@@ -262,6 +276,11 @@ Only report a result as genuinely "held" once you'd be comfortable explaining wh
 
 ## 8. Report back plainly
 
+**Always write the report to a file in the project** (`REPORT.md` beside `results.json`, in the folder from step 6) as
+well as telling the user in chat: the chat is gone next session, the file is what the developer shares and compares
+against after a fix. Follow `references/report-template.md`. Never leave a section out because it is empty; write
+"none" instead, so a missing section can't be mistaken for a clean one.
+
 Tell the user, for each thing tested: whether it held, succeeded, or was inconclusive (and why, if inconclusive); whether any result was flaky; and one concrete next step -- tighten a bound, add a missing allowance check, fix the agent's actual behavior, or (if everything genuinely held) say so plainly rather than hedging.
 
 ## Scope and limits, worth saying to the user up front
@@ -276,5 +295,6 @@ This is a developer self-check, not a substitute for an independent security rev
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
+- `references/report-template.md` -- the sections of the `REPORT.md` every run writes, and what each must say.
 - `references/canary-oracle.md` -- judging a shell/code/file-executing agent by what its tools actually did, plus replaying adaptive attacks.
 - `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`/`redteam_config_check`, with a real example of each one catching something.

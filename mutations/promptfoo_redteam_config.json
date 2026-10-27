@@ -1,47 +1,82 @@
 [
- {
-  "find": "return any(p not in FREE_GENERATION_PLUGINS for p in plugins)",
-  "replace": "return False",
-  "note": "spend-needed never detected"
- },
- {
-  "find": "return num_tests * len(plugins) * (1 + len(wrappers)) * len(languages or [\"en\"])",
-  "replace": "return num_tests * len(plugins)",
-  "note": "strategies and languages dropped from the test-count formula"
- },
- {
-  "find": "return f\"providers:\\n  - id: file://{target.value}\\n\"",
-  "replace": "return f\"providers:\\n  - id: {target.value}\\n\"",
-  "note": "python target missing its file:// scheme"
- },
- {
-  "find": "if not plugins:\n        raise ValueError(\"at least one plugin is required\")",
-  "replace": "pass",
-  "note": "an empty plugin list is silently accepted"
- },
- {
-  "find": "if bad_plugins or bad_strategies:",
-  "replace": "if False:",
-  "note": "an unknown plugin or strategy id is silently accepted"
- },
- {
-  "find": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies) if strategies else \"    - basic\"",
-  "replace": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies)",
-  "note": "an empty strategy list writes nothing instead of the basic baseline"
- },
- {
-  "find": "lang_line = f\"\\n  language: [{', '.join(languages)}]\" if languages else \"\"",
-  "replace": "lang_line = \"\"",
-  "note": "chosen languages never reach the config"
- },
- {
-  "find": "wrappers = [s for s in strategies if s != \"basic\"]",
-  "replace": "wrappers = list(strategies)",
-  "note": "basic counted as an extra wrapper in the test count"
- },
- {
-  "find": "canary_block = f\"    - type: python\\n      value: file://{canary_path}\\n\" if canary_path else \"\"",
-  "replace": "canary_block = \"\"",
-  "note": "the canary assertion is never written into the config"
- }
+  {
+    "find": "return any(p not in FREE_GENERATION_PLUGINS for p in plugins)",
+    "replace": "return False",
+    "note": "spend-needed never detected"
+  },
+  {
+    "find": "return num_tests * len(plugins) * (1 + len(wrappers)) * len(languages or [\"en\"])",
+    "replace": "return num_tests * len(plugins)",
+    "note": "strategies and languages dropped from the test-count formula"
+  },
+  {
+    "find": "return f\"providers:\\n  - id: file://{target.value}\\n\"",
+    "replace": "return f\"providers:\\n  - id: {target.value}\\n\"",
+    "note": "python target missing its file:// scheme"
+  },
+  {
+    "find": "if not plugins:\n        raise ValueError(\"at least one plugin is required\")",
+    "replace": "pass",
+    "note": "an empty plugin list is silently accepted"
+  },
+  {
+    "find": "if bad_plugins or bad_strategies:",
+    "replace": "if False:",
+    "note": "an unknown plugin or strategy id is silently accepted"
+  },
+  {
+    "find": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies) if strategies else \"    - basic\"",
+    "replace": "strategies_yaml = \"\\n\".join(f\"    - {s}\" for s in strategies)",
+    "note": "an empty strategy list writes nothing instead of the basic baseline"
+  },
+  {
+    "find": "lang_line = f\"\\n  language: [{', '.join(languages)}]\" if languages else \"\"",
+    "replace": "lang_line = \"\"",
+    "note": "chosen languages never reach the config"
+  },
+  {
+    "find": "wrappers = [s for s in strategies if s != \"basic\"]",
+    "replace": "wrappers = list(strategies)",
+    "note": "basic counted as an extra wrapper in the test count"
+  },
+  {
+    "find": "canary_block = f\"    - type: python\\n      value: file://{canary_path}\\n\" if canary_path else \"\"",
+    "replace": "canary_block = \"\"",
+    "note": "the canary assertion is never written into the config"
+  },
+  {
+    "find": "args = [promptfoo, \"redteam\", \"generate\", \"-c\", config_path, \"-o\", output_path, \"--force\", \"--no-cache\"]",
+    "replace": "args = [promptfoo, \"redteam\", \"run\", \"-c\", config_path, \"-o\", output_path, \"--force\", \"--no-cache\"]",
+    "note": "generate must not run the attacks"
+  },
+  {
+    "find": "args = [promptfoo, \"redteam\", \"eval\", \"-c\", generated_path, \"--no-cache\", \"-j\", \"1\"]",
+    "replace": "args = [promptfoo, \"redteam\", \"eval\", \"-c\", generated_path, \"--no-cache\"]",
+    "note": "eval of a shared fixture must stay at one test at a time"
+  },
+  {
+    "find": "args = [promptfoo, \"redteam\", \"eval\", \"-c\", generated_path, \"--no-cache\", \"-j\", \"1\"]",
+    "replace": "args = [\"promptfoo\", \"redteam\", \"eval\", \"-c\", generated_path, \"--no-cache\", \"-j\", \"1\"]",
+    "note": "the given binary must be used"
+  },
+  {
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"generate\"",
+    "replace": "    needs = strategies_sending_replies_remote(strategies)\n    args = [promptfoo, \"redteam\", \"generate\"",
+    "note": "generate skipped the approval check for adaptive strategies"
+  },
+  {
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"eval\"",
+    "replace": "    needs = strategies_sending_replies_remote(strategies)\n    args = [promptfoo, \"redteam\", \"eval\"",
+    "note": "eval skipped the approval check for adaptive strategies"
+  },
+  {
+    "find": "path = f\"PATH={shlex.quote(node_bin_dir)}:$PATH \" if node_bin_dir else \"\"",
+    "replace": "path = \"\"",
+    "note": "view command dropped the Node that preflight accepted"
+  },
+  {
+    "find": "{shlex.quote(config_dir)}",
+    "replace": "{config_dir}",
+    "note": "view command paths must be quoted"
+  }
 ]
