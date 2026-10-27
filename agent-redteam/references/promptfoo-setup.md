@@ -57,3 +57,7 @@ defaultTest:
         context_file: path/to/context.json
 ```
 The provider must return the reply as `output` and any tool calls as `metadata.tools` -- a list of `{"name": ..., "args": {...}, "refused": false}` objects. `templates/shop/provider.py` and `templates/shop_http/server.py` (the same agent, one in-process, one over real HTTP) are both complete, working examples of a provider in this shape.
+
+## See also
+- `promptfoo-plugins-strategies.md` -- which plugins and strategies to choose, and which need remote generation.
+- `canary-oracle.md` -- running the agent in a container with a planted fixture, and the generate-then-plant flow.

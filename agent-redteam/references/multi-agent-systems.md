@@ -50,3 +50,7 @@ A one-sub-agent-in-isolation test is a real, legitimate first pass, not a substi
 system. When reporting results for a multi-agent system, say explicitly which sub-agents were
 actually driven, whether the real router or a bypass reached them, and which sub-agents (if any)
 were never exercised at all -- the same honesty this toolkit already asks for everywhere else.
+
+## See also
+- `writing-a-context.md` -- writing one `RedTeamContext` per sub-agent.
+- `stateful-providers.md` -- when a sub-agent keeps state across requests.

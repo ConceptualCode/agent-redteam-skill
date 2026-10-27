@@ -31,3 +31,8 @@ If your own agent needs a domain-specific check like this, write it as a small p
 A second assertion like this gets the exact same `(output, context)` PromptFoo hands `assert_bridge.py` -- but PromptFoo's own nesting of where your provider's `metadata` actually lands in `context` isn't guaranteed to be in one fixed place. `bridge.py`'s own `grade()` checks both `context["providerResponse"]["metadata"]` and the flatter `context["metadata"]`, falling back to the second if the first isn't there -- write a project-local assertion the same defensive way rather than assuming one nesting, and confirm it against a real run before trusting it.
 
 This is also the shape for a relational check the generic detectors can't express at all -- e.g. "this tool's argument must equal what an earlier tool call actually returned" (the account-takeover pattern: an agent redirecting a sensitive action to an address the user just typed instead of the one on record). If the check genuinely needs to judge free-form phrasing rather than match structured data -- a secret/marker leak included -- a deterministic check can't do this reliably; an LLM judging the actual reply is the only sound mechanism, and that's a real, deliberate cost (non-determinism, a real model call, a new attack surface of its own), not something to reach for by default.
+
+## See also
+- `canary-oracle.md` -- the 7 detectors only see tool names; for shell, code or file tools, judge by what the tools did.
+- `writing-a-context.md` -- the `RedTeamContext` fields these detectors read.
+- `honesty-checks.md` -- confirming a "held" result is not an untested one.
