@@ -104,3 +104,10 @@ def test_privacy_switches_warn_when_unset_and_only_in_promptfoo_mode():
 
 def test_check_is_a_plain_record():
     assert Check("a", "ok", "b").fix == ""
+
+
+def test_promptfoo_installed_by_setup_promptfoo_is_found(tmp_path, monkeypatch):
+    (tmp_path / ".agent-redteam" / "node_modules" / ".bin").mkdir(parents=True)
+    (tmp_path / ".agent-redteam" / "node_modules" / ".bin" / "promptfoo").write_text("")
+    monkeypatch.chdir(tmp_path)
+    assert checks(promptfoo=True, which=lambda n: None)["promptfoo"].status == "ok"

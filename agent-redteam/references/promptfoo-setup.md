@@ -6,11 +6,7 @@ PromptFoo is the runner and viewer this toolkit is wired to today -- `assert_bri
 
 Needs **Node 22.22+**. Check with `node --version`; if it's older, install a matching version (e.g. via `nvm install 22 && nvm use 22`) rather than trying to run PromptFoo on whatever's already on the system -- older Node versions fail in ways that aren't obviously about the version (a native-module mismatch is a common one if a cached install predates a Node upgrade).
 
-Install a pinned version locally rather than relying on `npx` grabbing whatever's cached or latest:
-```
-npm install promptfoo@<version>
-```
-A `package.json` pinning the exact version, committed alongside a `package-lock.json`, makes the install reproducible for anyone else (or any CI) running the same checks later.
+The skill installs it for you: `python -m agent_redteam.setup_promptfoo --prefix <project>/.agent-redteam` puts the exact version the bundled catalog was captured from into a private, git-ignored `.agent-redteam/` folder and prints the binary's path. It never installs Node. This is a pinned `npm install` from the public registry (it runs that package's and its dependencies' install scripts), so say so before running it. Do not rely on `npx` grabbing whatever's cached or latest; a catalog captured from one version can disagree with another.
 
 `preflight.py --promptfoo` checks all of this -- Node version, whether `promptfoo` is actually installed, and reports a fix for whichever part is missing.
 

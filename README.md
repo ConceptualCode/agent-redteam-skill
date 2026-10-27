@@ -28,9 +28,10 @@ or build a zip of only the skill folder (for a release, or for Claude.ai's skill
 
     git archive --format=zip --prefix=agent-redteam/ HEAD:agent-redteam -o agent-redteam.zip
 
-Needs Python 3.9+. PromptFoo-based runs also need Node 22.22+ and PromptFoo, installed in the project being tested, not in the
-skill folder (`npm install promptfoo@0.123.1`; the bundled plugin catalog was captured from that version). Then ask Claude
-something like "red-team the agent in ./myagent".
+Needs Python 3.9+, and Node 22.22+ for PromptFoo runs. PromptFoo itself you do not install: the skill installs the pinned
+version (0.123.1, the one its plugin catalog was captured from) into a private, git-ignored `.agent-redteam/` folder in the
+project being tested the first time it needs it (`python -m agent_redteam.setup_promptfoo --prefix <project>/.agent-redteam`). Then ask Claude something like
+"red-team the agent in ./myagent".
 
 ## What is here
 | Script (`agent-redteam/scripts/agent_redteam/`) | What it does |

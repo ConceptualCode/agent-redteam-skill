@@ -50,7 +50,9 @@ def _find_local_promptfoo() -> bool:
     `npm install` actually put it (e.g. the scripts/ folder, one level under the repo root) gives a confident
     "not found" even though it's installed -- found testing this skill for real, not a hypothetical."""
     here = Path.cwd()
-    return any((d / "node_modules" / ".bin" / "promptfoo").exists() for d in (here, *here.parents))
+    # also the private folder setup_promptfoo installs into, so a bare `npm install` is not required
+    return any((d / sub / "promptfoo").exists() for d in (here, *here.parents)
+               for sub in (Path("node_modules/.bin"), Path(".agent-redteam/node_modules/.bin")))
 
 
 def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo: bool = False, meter_port: int = 8787,
@@ -72,7 +74,7 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
     if promptfoo:
         found = which("promptfoo") or _find_local_promptfoo()
         out.append(Check("promptfoo", "ok" if found else "fail", "installed" if found else "not found",
-                         "" if found else "npm install promptfoo (pin a version) -- checked this directory and its parents"))
+                         "" if found else "run `python -m agent_redteam.setup_promptfoo` (installs the pinned version into .agent-redteam/) -- checked this directory and its parents"))
 
     key = env.get(key_var, "")
     out.append(Check("api key", "ok" if key else "fail", f"{key_var} is set" if key else f"{key_var} is not set",

@@ -49,6 +49,17 @@ python -m agent_redteam.preflight --model <the model their agent uses> [--prompt
 ```
 from this skill's `scripts/` directory (or put it on `PYTHONPATH`). Each check reports `ok`/`warn`/`fail` with a one-line fix. Treat a `fail` as a hard stop -- don't proceed to a real run until it's resolved. A `warn` is worth mentioning but not necessarily blocking (e.g. PromptFoo's telemetry/sharing env vars aren't set -- see step 5's Path A).
 
+**PromptFoo is installed for the developer, not by them.** If the `promptfoo` check says it is not installed, install it
+yourself, always passing the developer's project directory so it never lands inside the skill folder:
+```
+python -m agent_redteam.setup_promptfoo --prefix <the developer's project>/.agent-redteam
+```
+(run it from this skill's `scripts/` directory or with `PYTHONPATH` set, same as preflight). It installs the exact version the bundled plugin catalog was captured from into a private, git-ignored `.agent-redteam/`
+folder (not the project's own `package.json`), takes a few minutes, is a no-op when already there, and prints the binary's
+path -- use that path for every `promptfoo ...` command from here on. Tell the developer what you are installing and
+where before you run it. It never installs Node: if Node is missing or older than 22.22 it stops with the fix
+(`nvm install 22 && nvm use 22`), so pass that on rather than working around it.
+
 ## 3. Ask for a budget, then estimate the cost
 
 Always ask the developer for a dollar budget before anything runs for real -- this is the one thing they must
