@@ -198,3 +198,40 @@ def test_it_works_over_real_sockets_and_forwards_the_callers_authorization(tmp_p
         assert json.loads(urllib.request.urlopen(base + "/_meter").read())["spent"] == 0.5
     finally:
         proxy.shutdown(); upstream.shutdown()
+
+
+def test_with_an_upstream_key_the_callers_token_is_replaced_and_never_forwarded():
+    from agent_redteam.meter import key_headers
+    m, up = meter(upstream_key=key_headers("REAL-KEY", "https://api.openai.com"))
+    post(m, headers={"Authorization": "Bearer throwaway", "X-Api-Key": "also-throwaway", "Content-Type": "application/json"})
+    sent = up.calls[0][2]
+    assert sent["Authorization"] == "Bearer REAL-KEY" and "throwaway" not in json.dumps(sent)
+    assert not any(k.lower() == "x-api-key" for k in sent) and sent["Content-Type"] == "application/json"
+
+
+def test_without_an_upstream_key_the_callers_token_is_forwarded_as_before():
+    m, up = meter()
+    post(m)
+    assert up.calls[0][2]["Authorization"] == "Bearer k"
+
+
+def test_anthropic_upstreams_get_the_key_in_x_api_key():
+    from agent_redteam.meter import key_headers
+    assert key_headers("K", "https://api.anthropic.com") == {"x-api-key": "K"}
+    assert key_headers("K", "https://api.openai.com") == {"Authorization": "Bearer K"}
+
+
+def test_the_upstream_key_is_not_written_to_the_log(tmp_path):
+    from agent_redteam.meter import key_headers
+    log = tmp_path / "spend.jsonl"
+    m, _ = meter(log_path=log, log_bodies=True, upstream_key=key_headers("REAL-KEY-VALUE", "https://api.openai.com"))
+    post(m)
+    assert "REAL-KEY-VALUE" not in log.read_text()
+
+
+def test_main_refuses_to_start_when_the_key_variable_is_not_set(monkeypatch, capsys):
+    from agent_redteam import meter as meter_mod
+    monkeypatch.delenv("RT_TEST_KEY", raising=False)
+    monkeypatch.setattr("sys.argv", ["x", "--budget", "1", "--key-env", "RT_TEST_KEY"])
+    assert meter_mod.main() == 1
+    assert "RT_TEST_KEY is not set" in capsys.readouterr().err

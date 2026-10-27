@@ -81,12 +81,15 @@ a small, fixed budget in mind and the test count is obviously small -- it's a sa
 ## 4. Start the meter and route calls through it
 
 ```
-python -m agent_redteam.meter --budget <dollars> &
+python -m agent_redteam.meter --budget <dollars> --key-env OPENAI_API_KEY &
 export OPENAI_BASE_URL=http://127.0.0.1:8787/v1          # OpenAI (the default --upstream)
 ```
+`--key-env` makes the meter hold the real key and send it upstream itself; give the agent under test any throwaway token
+(`OPENAI_API_KEY=throwaway`). **If the agent has a shell, code or file tool, this is required, not optional**: it can print
+its environment, and the real key would land in the results, the PromptFoo database and its cache.
 or, for Anthropic:
 ```
-python -m agent_redteam.meter --budget <dollars> --upstream https://api.anthropic.com &
+python -m agent_redteam.meter --budget <dollars> --upstream https://api.anthropic.com --key-env ANTHROPIC_API_KEY &
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8787           # the agent's own client/SDK base-url setting, not an env var the meter reads
 ```
 This is a real local reverse proxy: it prices every call from actual token usage and hard-refuses once the budget's spent -- confirmed PromptFoo itself has nothing like this (it tracks cost per call but has no global cap). The user's API key stays in their own shell -- never ask them to paste it into a file or a message; the meter just forwards the auth header through (`Authorization` for OpenAI, `x-api-key` for Anthropic) without storing it. Whichever model is actually priced in `prices.json` decides which usage-response shape gets parsed (`shape: "openai"` or `"anthropic"` per model family) -- a model with neither a price nor a matching shape is refused outright, the same "don't guess, don't silently undercount" rule the rest of this toolkit follows.
@@ -239,7 +242,10 @@ in a real run and the results went with it) -- point `PROMPTFOO_CONFIG_DIR` at a
 project (or copy it there when the run ends), keep the config, provider, context, `results.json` and summary beside
 it, and end the report with the exact command from `view_command(config_dir, promptfoo=<project binary>, node_bin_dir=<the Node preflight accepted>)`.
 That helper puts the accepted Node first on PATH: the `node` first on a developer's PATH is often older than 22.22, and
-a bare `promptfoo view` then fails. Run the command yourself once to confirm it starts before putting it in the report. Don't enable
+a bare `promptfoo view` then fails. Run the command yourself once to confirm it starts before putting it in the report. Before keeping
+or sharing that folder, run `python -m agent_redteam.secret_scan --env OPENAI_API_KEY <results folder> REPORT.md`
+(names only, never prints the value): a hit means the key leaked; say so in the report, tell the developer to rotate it,
+and redact the files. Don't enable
 PromptFoo's sharing to get a link (`PROMPTFOO_DISABLE_SHARING` stays on): that uploads the results.
 
 `summarize.py` groups by test id across repeats, separates controls from attacks (red-team tests are named

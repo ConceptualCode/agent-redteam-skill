@@ -52,8 +52,11 @@ throwaway container per test):
   times out (killing the `docker` client leaves the container running and spending).
 - Reach host listeners with `--add-host host.docker.internal:host-gateway` and `http://host.docker.internal:<port>`
   (confirmed on Docker Desktop with WSL2, including for listeners bound to 127.0.0.1). The container's own `127.0.0.1` is not the host.
-- Point the model client at the meter (`OPENAI_BASE_URL=http://host.docker.internal:8787/v1`), forward the key with `-e OPENAI_API_KEY`
-  (taken from the provider's environment, never written to a file or an argument), and pass the canary env values with `-e NAME=value`.
+- Point the model client at the meter (`OPENAI_BASE_URL=http://host.docker.internal:8787/v1`) and give the container a
+  throwaway key (`-e OPENAI_API_KEY=throwaway`), **never the real one**: start the meter with `--key-env OPENAI_API_KEY` so
+  it sends the real key upstream itself. An agent with a shell can print its environment, and a real key forwarded into
+  the container did end up in a saved results file, the PromptFoo database and its cache in a real run. Pass the canary
+  env values with `-e NAME=value`.
 - Set the egress proxy variables for the container yourself (`HTTP_PROXY=http://host.docker.internal:<fx.attacker port>`, and
   `NO_PROXY=host.docker.internal,localhost` so the meter is not refused). Do not call `enable_proxy_egress()` on the host.
 - Run on a benign prompt first: anything the agent's own startup fetches (e.g. a model price list) shows up as an

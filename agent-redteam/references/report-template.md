@@ -22,4 +22,4 @@ has not seen. Facts only: what was run, what the checks showed, what could not b
 9. **Skill or setup gaps hit during the run**, if any.
 10. **Next step**: one concrete action (tighten a bound, add a confinement, fix the behaviour).
 11. **View and reproduce**: the command from `view_command(...)`, confirmed to start, the list of files beside the
-    report, and a statement that the API key is stored in none of them.
+    report, and the result of `secret_scan` over those files (it must have been run; say if it found a key).
