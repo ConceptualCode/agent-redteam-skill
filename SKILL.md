@@ -25,6 +25,10 @@ Read `references/writing-a-context.md` for the full field reference and worked e
 
 Write the result as a JSON file (e.g. `context.json`) wherever the user's red-team work is living.
 
+**Derive `max_tool_calls` from the agent, don't guess it:** read its own step cap in the code, or measure a benign
+baseline, and record the basis in `max_tool_calls_source` -- see "Choosing a tool-call limit" in
+`references/writing-a-context.md` (what the limit protects, what it can't tell you, and how to count).
+
 **Then check the context isn't quietly empty where it matters.** `python -m agent_redteam.coverage_check context.json`
 reports, per field, whether it's actually configured or just running on nothing/a generic default. Concretely: if
 the agent has a tool like `delete_everything` that should never be callable, but `forbidden_tools` was never
@@ -97,6 +101,13 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain --
   unless remote generation is staying off (see `promptfoo-setup.md`), in which case drop `hijacking`: confirmed
   it needs PromptFoo's remote generation unconditionally and fails outright without it, no local fallback.
+  **Choose the model for each role, don't let PromptFoo pick.** Three roles use models: the *target* (the agent), the
+  *generator* (writes attacks) and the *judge* (an LLM grading replies; PromptFoo's plugin supplies the rubric, you
+  supply the model). Pass `generator_model=` and `judge_model=` to `build_config()` and run
+  `model_role_warnings(target, generator, judge)`: it warns when the judge is the same model as the target (a
+  same-family judge rates that family's replies too kindly) or when a role is unset (PromptFoo's default may be an
+  unpriced model the meter refuses). Remote generation and adaptive strategies are run by PromptFoo's servers, whose
+  model you can't choose -- say so. The judge reads only the final reply, not the tool calls.
 3. **Validate the list against what's actually installed** -- `promptfoo_catalog.Catalog.load().unknown_plugins(...)`/
   `.unknown_strategies(...)` (also checked automatically by `build_config()` below) catches a typo or a plugin
   this PromptFoo version doesn't have, before anything is spent on it. If the pinned PromptFoo version is old or
@@ -120,6 +131,19 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
   non-interactive run and skips it, the same env var any CI system sets). Don't fabricate a developer's email to
   get past this some other way -- `CI=true` is the real, sanctioned path.
+
+  **Adaptive strategies (`jailbreak`, `jailbreak:meta`/`composite`/`hydra`, `best-of-n`, ...) are opt-in, and they
+  send the agent's replies off the machine.** An attacker model reads each reply and rewrites the next attack, and
+  PromptFoo runs that on its own servers -- confirmed by a real run: `jailbreak` (an alias for `jailbreak:meta`)
+  fails at eval time with "requires remote generation" otherwise, *after* generation has already spent money. That
+  is more than remote *generation* sends (only the target description + plugin config). So: default to the local
+  `jailbreak-templates` and say plainly that it is less adaptive; if the developer wants the adaptive strategy, tell
+  them replies will leave the machine, get an explicit yes, then run it for them with
+  `redteam_run_args(config, strategies, remote_replies_approved=True)` (adds `--remote`; it raises if an adaptive
+  strategy is chosen without approval). Don't add `--remote` on your own, and don't drop the strategy silently.
+  `promptfoo_redteam_config.strategies_sending_replies_remote()` tells you which chosen strategies need this.
+  Calls the remote attacker makes happen on PromptFoo's side and don't pass through the local meter -- the meter
+  caps only the target and the local grader, so say that when giving the budget.
 7. **Say plainly what's deterministic and what isn't**: only tool/permission boundaries, plus the link/email
   corner of data exfiltration, map onto anything our bridge can check -- see
   `references/promptfoo-plugins-strategies.md`'s "What our bridge can actually grade" section for exactly which
@@ -135,6 +159,10 @@ PromptFoo test case; `tools/e2e/harness.py` and the `demo/*/run.py` files show t
 scenario, described in `assert_bridge.py`'s config). Wire the grading the same way:
 `value: file://.../agent-redteam-setup/scripts/assert_bridge.py` with `config: {context_file: <path>}`.
 `references/detectors.md` lists every detector and the exact wording/shape each needs to trigger.
+
+**If a tool is a general executor (shell, code interpreter, file reader), the 7 detectors can't judge it** -- they see
+the tool name, not what it did. Use the canary oracle: `references/canary-oracle.md` (`agent_redteam/canary.py` +
+`assert_canary.py`).
 
 If the agent needs a check none of the 7 generic detectors cover -- something specific to its own domain, or a
 secret/planted-instruction leak (there is no deterministic detector for either, see `references/detectors.md`) --
@@ -154,6 +182,15 @@ promptfoo eval -c promptfooconfig.yaml -o results.json          # Path B
 promptfoo export eval <id> -o results.json                      # Path A -- `redteam run` stores the eval and prints
 python -m agent_redteam.summarize results.json                  # its id ("Red team complete (ID: eval-...)"); use that id
 ```
+**Keep the results somewhere the developer can open them, and tell them how.** PromptFoo already stores every eval
+(plus the generated tests and each reply) in its own local database and ships a viewer: `promptfoo view` opens a
+browser UI with the full matrix, each reply, each assertion's verdict and reason, and a red-team report for
+`redteam run` evals. Don't leave that database in a temp/scratch directory (a scratchpad was wiped between sessions
+in a real run and the results went with it) -- point `PROMPTFOO_CONFIG_DIR` at a folder inside the developer's
+project (or copy it there when the run ends), keep the config, provider, context, `results.json` and summary beside
+it, and end the report with the exact command, e.g. `PROMPTFOO_CONFIG_DIR=<dir> promptfoo view`. Don't enable
+PromptFoo's sharing to get a link (`PROMPTFOO_DISABLE_SHARING` stays on): that uploads the results.
+
 `summarize.py` groups by test id across repeats, separates controls from attacks, and flags two things worth reading past the headline number. **A test is only recognized as a control if its id/description starts with `ctl-` (the default `--control-prefix`) or its `metadata.control` is explicitly `true`** -- a description like `control-foo` does not match and gets bucketed as an attack, silently.
 - **flaky** -- succeeded on some repeats but not all. A one-off pass or fail is weak evidence either way; a consistent one is much stronger.
 - **grader disagreed** -- if a model-grader assertion exists alongside the deterministic rule, they disagreed. The deterministic rule always wins for the pass/fail verdict; a disagreement is a signal worth reading, not something to average away.
@@ -163,6 +200,14 @@ python -m agent_redteam.summarize results.json                  # its id ("Red t
 This is the step most red-team setups skip, and it's the one most likely to make a result mean nothing:
 
 - **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. If the provider supplies what each tool returned (`metadata.tools[i].returned`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test and `bridge.grade()` checks this automatically, relabelling the reason `"inconclusive: ..."` rather than letting an untested path read as a proven one. Otherwise, call `vacuous_check.py`'s `reached()`/`final_status()` by hand.
+- **Did the deterministic checks actually run on this test?** Adaptive strategies (`jailbreak`, ...) replace the
+  provider's `metadata` with their own iteration data, so `metadata.tools` and any project-local oracle fields never
+  reach the assertions -- confirmed in a real run: the bridge said "agent held: no detector fired" with zero tool
+  calls to look at, and the project-local oracle said "inconclusive". Those PASSes mean nothing. For an adaptive
+  strategy, only PromptFoo's LLM grader judged the test; say so, and reproduce any claimed break with a
+  non-adaptive replay of the final attack prompt (`metadata.redteamFinalPrompt`) through the real provider.
+  Replay is built in: `python -m agent_redteam.replay_check results.json --provider provider.py --runs 3 --out replay.json`
+  re-sends each adaptive attack's final prompt through the real provider, where the oracle and bridge do run.
 - **Does the fake data the test used resemble the real thing?** If any part of the setup uses a fake/mocked tool response, compare it against a real sample with `shape_check.py` -- an invented field, a missing one, or a list the fake leaves empty when real data would fill it, can produce a result that looks clean for the wrong reason.
 - **Does a written defense (a system prompt addition, a filter) share wording with the exact attacks scoring it?** Check with `overfit_check.py` -- a defense that quotes the test's own attacks passes that benchmark for free and proves nothing about a differently-worded attacker.
 - **Was the detector that's supposed to catch this actually configured, or running on nothing?** This is `coverage_check.py` from step 1, worth re-checking here specifically because a "held" result is exactly where its absence hides best -- `forbidden_tool_used: held` reads very differently once you know whether `forbidden_tools` ever had anything in it.
@@ -185,4 +230,5 @@ This is a developer self-check, not a substitute for an independent security rev
 - `references/detectors.md` -- every detector, what it catches, and the exact wording/shape each needs to trigger.
 - `references/promptfoo-plugins-strategies.md` -- how to read an agent's code and map it to PromptFoo's real plugin/strategy catalog, with the deterministic-vs-LLM-graded caveat spelled out per group.
 - `references/promptfoo-setup.md` -- installing PromptFoo, the Node version requirement, and exactly what remote generation sends and how to keep it local.
+- `references/canary-oracle.md` -- judging a shell/code/file-executing agent by what its tools actually did, plus replaying adaptive attacks.
 - `references/honesty-checks.md` -- when and why to reach for `shape_check`/`vacuous_check`/`overfit_check`/`coverage_check`/`redteam_config_check`, with a real example of each one catching something.
