@@ -1,39 +1,60 @@
 # agent-redteam-skill
 
-Tools and a playbook for red-teaming an AI agent that has access to tools and data. Status: **M1 (core scripts), M2 (proof against
-real planted flaws, including an HTTP-transport and a RAG/memory variant), M3 (`SKILL.md` + reference guides), PromptFoo
-plugin/strategy auto-setup, and a provider-aware meter (OpenAI, Anthropic) done.** Still open: proving the bridge/PromptFoo-grader
-coexistence with an actual real-money eval run, a real-API smoke test of the meter, licence and release. Start at
-`agent-redteam/SKILL.md`.
+A skill that red-teams an AI agent you built. You ask your coding assistant to "red-team my agent"; it reads your agent's code,
+sets up [PromptFoo](https://www.promptfoo.dev) for you (picks the plugins, writes the config, installs it, runs it), keeps the
+spend under a hard dollar cap, and reports what held, what broke and what was inconclusive.
 
-The aim: let a developer set up a red team for their own agent without stress. This skill sets up PromptFoo itself end to end --
-reads the agent's code, proposes which of PromptFoo's own 155 plugins and ~35 strategies actually apply, assembles the config,
-and runs it -- rather than making the developer click through PromptFoo's setup wizard by hand. Deterministic rules decide
-whether an attack worked wherever a deterministic check is possible, a hard spend cap keeps the bill controlled, and a few
-checks stop a test from fooling you (a fake that does not match real data, an attack that never reached the target, a defence
-written in the test's own words).
+Two kinds of verdict, kept apart on purpose. **Deterministic Python checks** decide pass/fail wherever a check is possible: tool
+and permission boundaries, numeric limits, and, for agents that run shell/code/file tools, planted fake secrets and files
+that show what the tools actually did. Everything else (prompt injection, system-prompt leaks, PII) is judged by PromptFoo's own
+LLM grader and labelled as unproven. A few honesty checks stop a test from fooling you (an attack that never reached the agent,
+a fake that doesn't match real data, a check that was never configured).
 
-## Install
+This is a developer self-check, not an independent security review.
+
+## Using the skill
+
+### Install
 The skill is the **`agent-redteam/`** folder: `SKILL.md`, `references/`, `scripts/` (Python, standard library only) and
 `templates/`. It is self-contained; everything else in this repo (`tests/`, `mutations/`, `tools/`, `demo/`, `docs/`) is for
 developing the skill and is not needed to use it.
 
-Copy just that folder into a skills directory -- `~/.claude/skills/` for every project, or `.claude/skills/` inside the project
-whose agent you want to test:
+Copy just that folder into a skills directory: `~/.claude/skills/` for every project, or `.claude/skills/` inside the project
+whose agent you want to test.
 
     git clone --depth 1 https://github.com/ConceptualCode/agent-redteam-skill /tmp/agent-redteam-skill
     mkdir -p ~/.claude/skills && cp -r /tmp/agent-redteam-skill/agent-redteam ~/.claude/skills/
 
-or build a zip of only the skill folder (for a release, or for Claude.ai's skill upload):
+Needs Python 3.9+, and Node 22.22+ for PromptFoo runs. You do not install PromptFoo: the skill installs the pinned version
+(0.123.1, the one its plugin catalog was captured from) into a private, git-ignored `.agent-redteam/` folder in the project
+being tested the first time it needs it. It never installs Node; if Node is missing or too old it stops and tells you how.
 
-    git archive --format=zip --prefix=agent-redteam/ HEAD:agent-redteam -o agent-redteam.zip
+### A run, step by step
+Ask something like **"red-team the agent in ./myagent"**. Then:
 
-Needs Python 3.9+, and Node 22.22+ for PromptFoo runs. PromptFoo itself you do not install: the skill installs the pinned
-version (0.123.1, the one its plugin catalog was captured from) into a private, git-ignored `.agent-redteam/` folder in the
-project being tested the first time it needs it (`python -m agent_redteam.setup_promptfoo --prefix <project>/.agent-redteam`). Then ask Claude something like
-"red-team the agent in ./myagent".
+1. **It reads your agent's code** and asks only what it can't tell: what tools it has, what it must never do, whether it can see
+   secrets, which numbers matter (a discount cap, a spend limit). If requests are routed to several sub-agents it tests the router
+   as well as each sub-agent.
+2. **It writes a `context.json`** (the deterministic rules) and checks that no rule is silently empty, because a check with
+   nothing configured reports "held" for the wrong reason.
+3. **Preflight**: Python, Node, your API key (read from your shell, never printed or stored), PromptFoo (installed if missing).
+4. **It asks for a dollar budget**, estimates the cost, and starts a local proxy that refuses calls once the budget is spent.
+   Point the agent's model client at it, and keep your key in your own shell.
+5. **It picks attacks**: PromptFoo plugins and strategies chosen from your agent's code, with a reason for each and a note of
+   what it left out, always including a cheap baseline (excessive agency, prompt extraction, hijacking). Hand-written attacks
+   are added where the plugins don't fit.
+6. **It asks before anything leaves your machine.** Attack generation for some plugins runs on PromptFoo's servers and sends your
+   agent's description. The stronger adaptive `jailbreak` strategy also sends your agent's replies. The default is local-only
+   attacks; the adaptive one needs your explicit yes.
+7. **It runs, then checks the results aren't lying.** Did the deterministic checks actually run on each test? Did the attack
+   reach the agent? Adaptive attacks are replayed through the real agent so the deterministic checks can judge them.
+8. **It reports**, per item: held, broke, or inconclusive (and why), anything flaky, which verdicts are deterministic and which
+   are the LLM grader's opinion, and one next step. The PromptFoo results are kept in a folder you can open with `promptfoo view`.
 
-## What is here
+Expect the PromptFoo install to take a few minutes the first time, and runs to cost real money against your own key
+(the budget you set is a hard cap on the calls it can see; PromptFoo's own remote generation is not metered).
+
+## What is in the skill
 | Script (`agent-redteam/scripts/agent_redteam/`) | What it does |
 |---|---|
 | `contracts.py` | the two shapes everything shares: `Result` (replies and tool calls) and `RedTeamContext` (what the agent must never do) |
@@ -65,40 +86,53 @@ network hop. `templates/notes/` proves the same detectors still catch an attack 
 returned text or a recalled memory, rather than the user's own words -- a different attack shape, not a new detector.
 The runners that prove them live in `demo/*/run.py` and share `tools/e2e/harness.py`; those are development tools, not part of the skill.
 
-## Use
-Start at `SKILL.md` for the full workflow and the reasoning behind each step. The quick version:
+## Maintaining the skill
 
-    export OPENAI_API_KEY=...                                   # in your own shell; never paste it anywhere
-    cd agent-redteam/scripts
-    python -m agent_redteam.preflight --promptfoo               # what is missing?
-    python -m agent_redteam.meter --budget 2.5 &                # then: export OPENAI_BASE_URL=http://127.0.0.1:8787/v1
-    python -m agent_redteam.estimate --tests 96 --repeats 3 --budget 2.5
-    python -m agent_redteam.summarize results.json [after.json] # promptfoo export eval <id> -o results.json
+### Layout
+    agent-redteam/     the skill: SKILL.md, references/, scripts/ (toolkit), templates/ (scripted example agents)
+    tests/             unit tests for the toolkit and the skill's format rules
+    mutations/         deliberate code breakages that the tests must catch (see below)
+    tools/             mutation_check.py, mutation_all.py, e2e/harness.py (development only)
+    demo/              runners that prove the detectors against the templates inside real PromptFoo (no model, free)
+    docs/DESIGN.md     why it is shaped this way
 
-In PromptFoo, use the bridge as the assertion: `value: file://.../assert_bridge.py` with `config: {context_file: context.json}`.
-Have your provider return the reply as `output` and the tool calls as `metadata.tools` (`[{"name", "args", "refused"}]`).
+### Set up
+    python -m venv .venv && .venv/bin/pip install pytest
+    npm install                      # Node 22.22+; a dev copy of the pinned PromptFoo for the demos
 
-To use PromptFoo's own plugins/strategies instead of hand-written attacks, see `references/promptfoo-plugins-strategies.md`
-for picking a plugin set and `promptfoo_redteam_config.build_config()` for assembling the config. Run PromptFoo's redteam
-commands with `CI=true` set -- confirmed directly in the installed package's own source: without it, `redteam generate`/`run`
-stop for an interactive "email verification" lead-capture prompt that has nothing to do with the actual red team.
-`scripts/capture_promptfoo_catalog.py` re-captures the plugin/strategy catalog from whatever PromptFoo version is pinned, so it
-never silently drifts from what's actually installed.
+### Before every commit
+    .venv/bin/python -m pytest                      # unit tests, including the skill-format rules
+    .venv/bin/python tools/mutation_all.py          # must say "all mutations caught"
+    for d in shop email file notes shop_http; do .venv/bin/python demo/$d/run.py node_modules/.bin/promptfoo; done
 
-Before trusting any "held" result, run `python -m agent_redteam.coverage_check context.json` -- a detector with nothing
-declared (an empty `forbidden_tools`, an unset `arg_bounds`) doesn't warn, it just never fires, so "held" can mean "nothing
-was ever configured to catch this" rather than "the agent resisted it."
+Run the mutation checker with the same Python that has `pytest`; it runs the tests with whatever Python launched it, and without
+`pytest` every module reports "the tests fail before any mutation".
 
-## Test it
-    python -m pytest                       # unit tests
-    python tools/mutation_all.py           # breaks the code on purpose; every mutation must be caught
-    python demo/shop/run.py <promptfoo>    # the bridge inside real PromptFoo (free: no model is called)
+### Common changes
+- **New or changed module**: add tests, then a mutation file (`mutations/<name>.json`, a list of `{"find", "replace", "note"}`
+  where `find` occurs exactly once in the source) and an entry in `tools/mutation_manifest.json`. A mutation that survives means
+  a weak test. Not yet done for `canary.py`, `replay_check.py` and `setup_promptfoo.py`.
+- **New detector**: add it to `detectors/core.py` and the `DETECTORS` tuple, its field to `RedTeamContext.from_dict` and
+  `coverage_check.FIELDS`, a planted flaw plus a control in a template, and a row in `references/detectors.md`.
+- **Bumping PromptFoo**: change the version in `package.json`, `npm install`, run `agent-redteam/scripts/capture_promptfoo_catalog.py`
+  (writes `promptfoo_catalog.json`), re-check the hand-written counts in `references/promptfoo-plugins-strategies.md`, rerun the
+  demos. `setup_promptfoo` installs whatever version the catalog records, so users pick up the bump automatically.
+- **Prices**: edit `agent-redteam/scripts/agent_redteam/prices.json`; a model with no price is refused by the meter.
 
-Every module has tests that were mutation-checked; a mutation that survives meant a weak test and was fixed.
+### Skill-writing rules (checked by `tests/test_skill_format.py`)
+Following Anthropic's [skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices):
+`description` at most 1,024 characters, third person, saying what the skill does and when to use it; `SKILL.md` under 500 lines;
+every reference file linked directly from `SKILL.md`; a table of contents on reference files over 100 lines; the folder name equals
+the skill name; no paths into the dev-only folders.
+
+### Releasing
+No release process yet. Sharing a copy of just the skill is `git archive --format=zip --prefix=agent-redteam/ HEAD:agent-redteam -o agent-redteam.zip`.
 
 ## Not done yet
-Proving the bridge/PromptFoo-grader coexistence with an actual real-money eval run (currently traced through code and config
-inspection, not a passing graded result -- see `docs/DESIGN.md`). A secret/planted-instruction-leak check has no detector
-in this toolkit today (removed, not replaced -- see `references/detectors.md`). A real-API smoke test of the meter against
-actual OpenAI/Anthropic usage (the shape-aware parsing is unit-tested, not run against a live call), licence and release.
-Also still open: public vs. private, the project's name, and which assistants/environments it explicitly targets.
+- The bridge and PromptFoo's grader now run together on real evals, but adaptive strategies replace the provider's metadata, so
+  the deterministic checks never run on them; those attacks must be replayed (`replay_check`).
+- The meter has been run against live OpenAI calls; the Anthropic usage parsing is unit-tested only.
+- The canary checks see only what they plant: reads of unplanted files and raw-socket network traffic are invisible.
+- `canary.py`, `replay_check.py` and `setup_promptfoo.py` aren't mutation-checked yet.
+- No licence file yet.
+- Tested as a Claude Code skill only; other assistants and environments are untested.

@@ -23,6 +23,8 @@ def _test_block(name: str) -> str:
 
 def _run_config(work: Path, providers_yaml: str, expected: dict[str, bool], promptfoo: str) -> tuple[dict[str, bool], str]:
     """Write promptfooconfig.yaml with the given `providers:` block, run it for real, and read back the verdicts."""
+    if Path(promptfoo).exists():   # the run happens in a temp dir, so a relative path to the binary would not resolve there
+        promptfoo = str(Path(promptfoo).resolve())
     tests = "\n".join(_test_block(t) for t in expected)
     (work / "promptfooconfig.yaml").write_text(
         f'description: e2e check\nprompts: ["{{{{q}}}}"]\n{providers_yaml}\ndefaultTest:\n  assert:\n'
