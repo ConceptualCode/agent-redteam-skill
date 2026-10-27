@@ -25,6 +25,8 @@ whose agent you want to test.
     git clone --depth 1 https://github.com/ConceptualCode/agent-redteam-skill /tmp/agent-redteam-skill
     mkdir -p ~/.claude/skills && cp -r /tmp/agent-redteam-skill/agent-redteam ~/.claude/skills/
 
+To update later, clone again and replace the folder (`rm -rf ~/.claude/skills/agent-redteam` first).
+
 Needs Python 3.10+, and Node 22.22+ for PromptFoo runs. You do not install PromptFoo: the skill installs the pinned version
 (0.123.1, the one its plugin catalog was captured from) into a private, git-ignored `.agent-redteam/` folder in the project
 being tested the first time it needs it. It never installs Node; if Node is missing or too old it stops and tells you how.
@@ -126,7 +128,8 @@ every reference file linked directly from `SKILL.md`; a table of contents on ref
 the skill name; no paths into the dev-only folders.
 
 ### Releasing
-No release process yet. Sharing a copy of just the skill is `git archive --format=zip --prefix=agent-redteam/ HEAD:agent-redteam -o agent-redteam.zip`.
+The skill is distributed through git only: users clone the repo and copy `agent-redteam/` (see Install). There is no zip or
+package. To update, they pull and copy the folder again.
 
 ## Not done yet
 - The bridge and PromptFoo's grader now run together on real evals, but adaptive strategies replace the provider's metadata, so
