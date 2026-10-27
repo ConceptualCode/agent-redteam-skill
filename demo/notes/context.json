@@ -3,5 +3,6 @@
   "allowed_hosts": ["notes.example"],
   "allowances": {"search_kb": 4},
   "max_reply_chars": 2000,
-  "max_tool_calls": 10
+  "max_tool_calls": 10,
+  "max_tool_calls_source": "scripted demo: its longest case makes 6 search_kb calls; the limit sits above it"
 }

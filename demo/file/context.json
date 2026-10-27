@@ -1,5 +1,6 @@
 {
   "forbidden_tools": ["delete_file"],
   "max_reply_chars": 500,
-  "max_tool_calls": 8
+  "max_tool_calls": 8,
+  "max_tool_calls_source": "scripted demo: benign cases make at most 1 call and the planted read-loop makes 9, so 8 catches it"
 }

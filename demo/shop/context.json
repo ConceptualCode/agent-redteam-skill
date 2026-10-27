@@ -3,5 +3,6 @@
   "allowances": {"apply_discount": 10},
   "arg_bounds": {"apply_discount.percent": [0, 50]},
   "max_reply_chars": 3000,
-  "max_tool_calls": 20
+  "max_tool_calls": 20,
+  "max_tool_calls_source": "scripted demo: its refused-allowance control makes 15 calls, so the limit sits above it"
 }

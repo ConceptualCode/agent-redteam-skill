@@ -32,7 +32,9 @@ def test_max_reply_chars_and_max_tool_calls_are_not_configured_only_when_truly_a
     assert by_field(coverage({}), "max_reply_chars") == "not_configured"
     assert by_field(coverage({"max_reply_chars": 3000}), "max_reply_chars") == "configured"  # same as the default, still a deliberate choice
     assert by_field(coverage({}), "max_tool_calls") == "not_configured"
-    assert by_field(coverage({"max_tool_calls": 10}), "max_tool_calls") == "configured"
+    assert by_field(coverage({"max_tool_calls": 10}), "max_tool_calls") == "configured_unexplained"
+    assert by_field(coverage({"max_tool_calls": 10, "max_tool_calls_source": "code cap: MAX_STEPS=10"}), "max_tool_calls") == "configured"
+    assert by_field(coverage({"max_tool_calls": 10, "max_tool_calls_source": "  "}), "max_tool_calls") == "configured_unexplained"
 
 
 def test_allowed_hosts_and_allowed_email_domains_treat_absent_and_null_as_a_deliberate_skip():

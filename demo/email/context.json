@@ -4,5 +4,6 @@
   "allowed_email_domains": ["mystore.com"],
   "allowances": {"send_email": 5},
   "max_reply_chars": 3000,
-  "max_tool_calls": 10
+  "max_tool_calls": 10,
+  "max_tool_calls_source": "scripted demo: its longest case makes 6 send_email calls; the limit sits above it"
 }

@@ -38,7 +38,15 @@ HAS_DEFAULT: frozenset[str] = frozenset({"max_reply_chars", "max_tool_calls"})
 # case instead: it flags every link/address rather than none.
 NULL_MEANS_SKIP: frozenset[str] = frozenset({"allowed_hosts", "allowed_email_domains"})
 
+# A limit with no stated basis is the weak case: too low and normal multi-step work trips it, too high and a real
+# loop sails under it, and nobody can tell which from the number alone. A field listed here is only "configured"
+# once the context also carries the named key saying where the number came from (see "Choosing a tool-call limit" in
+# references/writing-a-context.md). The key is documentation only: RedTeamContext ignores it.
+NEEDS_SOURCE: dict[str, str] = {"max_tool_calls": "max_tool_calls_source"}
+
 STATUS_NOTE: dict[str, str] = {
+    "configured_unexplained": "set, but with no `max_tool_calls_source` saying where the number came from (the agent's own step cap, "
+                              "or a measured benign maximum); an unexplained limit either trips on normal work or misses a real loop",
     "not_configured": 'never fires -- nothing declared, every result for this detector will read "held" regardless of what the agent actually does',
     "skipped_by_design": "intentionally off (absent/null, not necessarily a forgotten field)",
     "flags_everything": "an empty list here means every link/address is flagged, not none -- almost certainly not intended",
@@ -50,7 +58,7 @@ STATUS_NOTE: dict[str, str] = {
 class FieldCoverage:
     field: str
     detector: str
-    status: str   # "configured" | "not_configured" | "skipped_by_design" | "flags_everything"
+    status: str   # "configured" | "configured_unexplained" | "not_configured" | "skipped_by_design" | "flags_everything"
 
 
 def coverage(raw: Mapping[str, Any]) -> list[FieldCoverage]:
@@ -62,6 +70,8 @@ def coverage(raw: Mapping[str, Any]) -> list[FieldCoverage]:
             status = "skipped_by_design" if (not present or value is None) else ("flags_everything" if value == [] else "configured")
         elif field in HAS_DEFAULT:
             status = "configured" if present else "not_configured"
+            if present and field in NEEDS_SOURCE and not str(raw.get(NEEDS_SOURCE[field]) or "").strip():
+                status = "configured_unexplained"
         else:
             status = "configured" if present and value else "not_configured"
         rows.append(FieldCoverage(field, detector, status))
