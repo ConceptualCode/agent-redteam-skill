@@ -16,5 +16,6 @@
   {"file": "agent-redteam/scripts/agent_redteam/redteam_config_check.py", "mutations": "mutations/redteam_config_check.json", "tests": "tests/test_redteam_config_check.py"},
   {"file": "agent-redteam/scripts/agent_redteam/canary.py", "mutations": "mutations/canary.json", "tests": "tests/test_canary.py"},
   {"file": "agent-redteam/scripts/agent_redteam/setup_promptfoo.py", "mutations": "mutations/setup_promptfoo.json", "tests": "tests/test_setup_promptfoo.py"},
-  {"file": "agent-redteam/scripts/agent_redteam/replay_check.py", "mutations": "mutations/replay_check.json", "tests": "tests/test_replay_check.py"}
+  {"file": "agent-redteam/scripts/agent_redteam/replay_check.py", "mutations": "mutations/replay_check.json", "tests": "tests/test_replay_check.py"},
+  {"file": "agent-redteam/scripts/agent_redteam/secret_scan.py", "mutations": "mutations/secret_scan.json", "tests": "tests/test_secret_scan.py"}
 ]

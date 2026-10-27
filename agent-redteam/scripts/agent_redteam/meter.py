@@ -4,8 +4,12 @@ confirmed in its source, but has no global dollar cap; checked its real --help o
 
     python -m agent_redteam.meter --budget 2.5 --port 8787      # then set OPENAI_BASE_URL=http://127.0.0.1:8787/v1
     python -m agent_redteam.meter --budget 2.5 --upstream https://api.anthropic.com   # same meter, Anthropic instead
+    python -m agent_redteam.meter --budget 2.5 --key-env OPENAI_API_KEY   # the meter holds the key, the agent gets a dummy
 
-The caller's auth header (Authorization, or Anthropic's x-api-key) is forwarded and never stored. The cap is checked
+By default the caller's auth header (Authorization, or Anthropic's x-api-key) is forwarded and never stored. With
+`--key-env NAME` the meter reads the real key from its own environment and puts it on every upstream call itself, so
+the agent under test is given any throwaway token and the real key never enters its container or its environment (an
+agent with a shell can print its environment, and the output lands in the results). The cap is checked
 before each call, so calls already in flight when it is reached can pass it by a few cents. A call that times out
 upstream may still be billed; it is logged.
 """
@@ -13,6 +17,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 import threading
 import time
 import urllib.error
@@ -24,6 +30,7 @@ from typing import Callable
 from .pricing import Prices
 
 FORWARDED = {"authorization", "content-type", "openai-organization", "openai-project", "x-api-key", "anthropic-version"}
+AUTH_HEADERS = {"authorization", "x-api-key"}
 Forward = Callable[[str, str, dict, bytes], tuple[int, dict, bytes]]
 
 
@@ -71,11 +78,12 @@ def _json(status: int, payload: dict) -> tuple[int, dict, bytes]:
 
 class Meter:
     def __init__(self, budget: float, prices: Prices, upstream: str = "https://api.openai.com", log_path: str | Path | None = None,
-                 log_bodies: bool = False, forward: Forward = urllib_forward):
+                 log_bodies: bool = False, forward: Forward = urllib_forward, upstream_key: dict | None = None):
         if budget <= 0:
             raise ValueError("budget must be greater than zero")
         self.budget, self.prices, self.upstream = budget, prices, upstream.rstrip("/")
         self.log_path, self.log_bodies, self.forward = Path(log_path) if log_path else None, log_bodies, forward
+        self._upstream_key = upstream_key   # {header: value} that replaces the caller's auth; never logged
         self.state = {"spent": 0.0, "calls": 0, "refused": 0, "upstream_errors": 0, "by_model": {}}
         self._lock = threading.Lock()
 
@@ -118,6 +126,9 @@ class Meter:
                                              "code": "meter_budget_exhausted"}})
         started = time.time()
         sent = {k: v for k, v in headers.items() if k.lower() in FORWARDED}
+        if self._upstream_key:
+            sent = {k: v for k, v in sent.items() if k.lower() not in AUTH_HEADERS}
+            sent.update(self._upstream_key)
         try:
             status, resp_headers, resp_body = self.forward(method, self.upstream + path, sent, body)
         except OSError as exc:  # a timed-out call may still be billed upstream, so it is counted and logged
@@ -170,6 +181,11 @@ def make_server(meter: Meter, port: int = 8787, host: str = "127.0.0.1") -> Thre
     return ThreadingHTTPServer((host, port), Handler)
 
 
+def key_headers(key: str, upstream: str) -> dict:
+    """The auth header the provider at `upstream` expects for `key`."""
+    return {"x-api-key": key} if "anthropic" in upstream else {"Authorization": f"Bearer {key}"}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--budget", type=float, required=True, help="hard cap in US dollars")
@@ -177,9 +193,18 @@ def main() -> int:
     ap.add_argument("--upstream", default="https://api.openai.com")
     ap.add_argument("--prices", help="path to a prices JSON (default: the bundled prices.json)")
     ap.add_argument("--log", default="out/spend.jsonl")
+    ap.add_argument("--key-env", help="name of the environment variable holding the real key; the meter then sends it "
+                    "upstream itself and ignores whatever key the caller sends")
     ap.add_argument("--log-bodies", action="store_true", help="also log request and response bodies (prompts!)")
     args = ap.parse_args()
-    meter = Meter(args.budget, Prices.load(args.prices), args.upstream, args.log, args.log_bodies)
+    upstream_key = None
+    if args.key_env:
+        key = os.environ.get(args.key_env)
+        if not key:
+            print(f"{args.key_env} is not set in this shell", file=sys.stderr)
+            return 1
+        upstream_key = key_headers(key, args.upstream)
+    meter = Meter(args.budget, Prices.load(args.prices), args.upstream, args.log, args.log_bodies, upstream_key=upstream_key)
     server = make_server(meter, args.port)
     print(f"meter on http://127.0.0.1:{args.port}/v1  budget ${args.budget:.2f}  log {args.log}", flush=True)
     try:
