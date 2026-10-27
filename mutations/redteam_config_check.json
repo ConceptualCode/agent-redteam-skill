@@ -23,5 +23,10 @@
   "find": "return 1 if not a.has_bridge_assertion else 0",
   "replace": "return 0",
   "note": "the command line never exits nonzero even when the deterministic bridge is completely missing"
+ },
+ {
+  "find": "has_canary_assertion=\"assert_canary.py\" in yaml_text,",
+  "replace": "has_canary_assertion=False,",
+  "note": "a wired-in canary assertion is not detected"
  }
 ]

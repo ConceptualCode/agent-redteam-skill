@@ -44,19 +44,25 @@ def _http_get(url: str) -> str:
         return resp.read().decode()
 
 
-def _find_local_promptfoo() -> bool:
+def _find_local_promptfoo(project: str | None = None) -> Path | None:
     """node_modules/.bin/promptfoo in the current directory or any parent -- mirrors how node/npm resolve a
     locally installed binary. Without the parent walk, running preflight from a subdirectory of wherever
     `npm install` actually put it (e.g. the scripts/ folder, one level under the repo root) gives a confident
-    "not found" even though it's installed -- found testing this skill for real, not a hypothetical."""
-    here = Path.cwd()
+    "not found" even though it's installed -- found testing this skill for real, not a hypothetical.
+
+    With `project`, look only there: SKILL.md runs preflight from the skill's own scripts/ folder, and the parent walk
+    from there finds the skill repo's dev copy of PromptFoo, reporting "installed" for a project that has none."""
+    here = Path(project) if project else Path.cwd()
     # also the private folder setup_promptfoo installs into, so a bare `npm install` is not required
-    return any((d / sub / "promptfoo").exists() for d in (here, *here.parents)
-               for sub in (Path("node_modules/.bin"), Path(".agent-redteam/node_modules/.bin")))
+    for d in ((here,) if project else (here, *here.parents)):
+        for sub in (Path("node_modules/.bin"), Path(".agent-redteam/node_modules/.bin")):
+            if (d / sub / "promptfoo").exists():
+                return d / sub / "promptfoo"
+    return None
 
 
 def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo: bool = False, meter_port: int = 8787,
-               prices: Prices | None = None, key_var: str = "OPENAI_API_KEY", run: Callable = _run,
+               prices: Prices | None = None, key_var: str = "OPENAI_API_KEY", run: Callable = _run, project: str | None = None,
                http_get: Callable[[str], str] = _http_get, which: Callable = shutil.which,
                python_version: tuple[int, int] = sys.version_info[:2]) -> list[Check]:
     prices, out = prices or Prices.load(), []
@@ -72,9 +78,11 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
     else:
         out.append(Check("node", "ok", f"{node[0]}.{node[1]}"))
     if promptfoo:
-        found = which("promptfoo") or _find_local_promptfoo()
-        out.append(Check("promptfoo", "ok" if found else "fail", "installed" if found else "not found",
-                         "" if found else "run `python -m agent_redteam.setup_promptfoo` (installs the pinned version into .agent-redteam/) -- checked this directory and its parents"))
+        found = which("promptfoo") or _find_local_promptfoo(project)
+        where = f"{project}/.agent-redteam/" if project else ".agent-redteam/"
+        out.append(Check("promptfoo", "ok" if found else "fail", f"installed ({found})" if found else "not found",
+                         "" if found else f"run `python -m agent_redteam.setup_promptfoo --prefix {where.rstrip('/')}` (installs the pinned version there)"
+                         + ("" if project else " -- checked this directory and its parents; pass --project <dir> to check only the project")))
 
     key = env.get(key_var, "")
     out.append(Check("api key", "ok" if key else "fail", f"{key_var} is set" if key else f"{key_var} is not set",
@@ -110,8 +118,9 @@ def main() -> int:
     ap.add_argument("--model", action="append", default=["gpt-4.1"], help="a model the run will use (repeatable)")
     ap.add_argument("--promptfoo", action="store_true", help="also check what PromptFoo needs")
     ap.add_argument("--meter-port", type=int, default=8787)
+    ap.add_argument("--project", help="the developer's project folder: look for PromptFoo only there (not in this skill's own folder)")
     args = ap.parse_args()
-    checks = run_checks(sorted(set(args.model)), promptfoo=args.promptfoo, meter_port=args.meter_port)
+    checks = run_checks(sorted(set(args.model)), promptfoo=args.promptfoo, meter_port=args.meter_port, project=args.project)
     for c in checks:
         print(f"[{c.status.upper():4}] {c.name}: {c.detail}" + (f"\n         fix: {c.fix}" if c.fix else ""))
     return 1 if any(c.status == "fail" for c in checks) else 0

@@ -10,8 +10,8 @@
   "note": "an unknown strategy is never reported"
  },
  {
-  "find": "tuple(data[\"default_plugins\"]), tuple(data[\"strategy_ids\"]), tuple(data[\"default_strategies\"]))",
-  "replace": "tuple(data[\"default_plugins\"]), tuple(data[\"default_strategies\"]), tuple(data[\"default_strategies\"]))",
+  "find": "tuple(data[\"default_plugins\"]), tuple(data[\"strategy_ids\"]), tuple(data[\"default_strategies\"]),",
+  "replace": "tuple(data[\"default_plugins\"]), tuple(data[\"default_strategies\"]), tuple(data[\"default_strategies\"]),",
   "note": "strategy_ids loaded from the wrong field"
  },
  {
@@ -23,5 +23,20 @@
   "find": "            if p.startswith(args.prefix):",
   "replace": "            if True:",
   "note": "--prefix ignored for plugins"
+ },
+ {
+  "find": "return [i for i in ids if i in self.remote_generation_plugins]",
+  "replace": "return []",
+  "note": "remote-only plugins are never reported"
+ },
+ {
+  "find": "if self.remote_generation_plugins is None:",
+  "replace": "if False:",
+  "note": "a catalog without the remote list answers instead of refusing"
+ },
+ {
+  "find": "tuple(data[\"remote_generation_plugins\"]) if \"remote_generation_plugins\" in data else None",
+  "replace": "None",
+  "note": "the remote list is never loaded"
  }
 ]

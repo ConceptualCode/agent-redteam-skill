@@ -5,8 +5,8 @@
   "note": "attack_id var ignored"
  },
  {
-  "find": "return str(description).split(\" (\")[0] if description else f\"test-{index}\"",
-  "replace": "return str(description) if description else f\"test-{index}\"",
+  "find": "return str(description).split(\" (\")[0]",
+  "replace": "return str(description)",
   "note": "description suffix kept in the id"
  },
  {
@@ -40,12 +40,12 @@
   "note": "a second grader's disagreement dropped again"
  },
  {
-  "find": "inconclusive = held and any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
-  "replace": "inconclusive = any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
+  "replace": "inconclusive = agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
   "note": "a failed attack can be marked inconclusive too"
  },
  {
-  "find": "inconclusive = held and any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
   "replace": "inconclusive = held",
   "note": "every held result marked inconclusive, not just ones that say so"
  },
@@ -55,7 +55,7 @@
   "note": "inconclusive count never reaches the table"
  },
  {
-  "find": "+ [f\" {r['inconclusive']} inconclusive (never reached)\"] * bool(r[\"inconclusive\"])",
+  "find": "+ [f\" {r['inconclusive']} inconclusive (never reached / agent error)\"] * bool(r[\"inconclusive\"])",
   "replace": "",
   "note": "inconclusive count not shown in the formatted table"
  },
@@ -108,5 +108,25 @@
   "find": "return sorted(out, key=lambda row: (row[\"control\"], row[\"id\"]))",
   "replace": "return sorted(out, key=lambda row: row[\"id\"])",
   "note": "comparison does not list controls after attacks"
+ },
+ {
+  "find": "(agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
+  "replace": "any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+  "note": "an agent error does not make a held result inconclusive"
+ },
+ {
+  "find": "return f\"{meta['pluginId']} [{meta.get('strategyId') or 'basic'}] #{index}\"",
+  "replace": "return f\"test-{index}\"",
+  "note": "red-team tests are named by position, not plugin"
+ },
+ {
+  "find": "+ [f\" failed by: {', '.join(r['failed_by'])}\"] * bool(r[\"failed_by\"] and r[\"succeeded\"]))",
+  "replace": ")",
+  "note": "which check caught an attack is not shown"
+ },
+ {
+  "find": "return \"bridge\" if \"assert_bridge\" in value else \"canary\" if \"assert_canary\" in value else \"rule\"",
+  "replace": "return \"rule\"",
+  "note": "every python check is labelled the same"
  }
 ]

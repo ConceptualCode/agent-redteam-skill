@@ -30,8 +30,8 @@
   "note": "promptfoo checked outside promptfoo mode"
  },
  {
-  "find": "return any((d / \"node_modules\" / \".bin\" / \"promptfoo\").exists() for d in (here, *here.parents))",
-  "replace": "return (here / \"node_modules\" / \".bin\" / \"promptfoo\").exists()",
+  "find": "for d in ((here,) if project else (here, *here.parents)):",
+  "replace": "for d in (here,):",
   "note": "promptfoo not found from a subdirectory of where it was installed"
  },
  {
@@ -63,5 +63,15 @@
   "find": "    if promptfoo:\n        for var, why",
   "replace": "    if True:\n        for var, why",
   "note": "privacy switches checked outside promptfoo mode"
+ },
+ {
+  "find": "for d in ((here,) if project else (here, *here.parents)):",
+  "replace": "for d in (here, *here.parents):",
+  "note": "--project also walks up into the skill's own folder"
+ },
+ {
+  "find": "found = which(\"promptfoo\") or _find_local_promptfoo(project)",
+  "replace": "found = which(\"promptfoo\") or _find_local_promptfoo()",
+  "note": "--project is ignored"
  }
 ]

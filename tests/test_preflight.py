@@ -111,3 +111,22 @@ def test_promptfoo_installed_by_setup_promptfoo_is_found(tmp_path, monkeypatch):
     (tmp_path / ".agent-redteam" / "node_modules" / ".bin" / "promptfoo").write_text("")
     monkeypatch.chdir(tmp_path)
     assert checks(promptfoo=True, which=lambda n: None)["promptfoo"].status == "ok"
+
+
+def test_project_lookup_ignores_the_skills_own_copy_and_reports_where_it_found_one(tmp_path, monkeypatch):
+    skill = tmp_path / "skill" / "scripts"
+    (tmp_path / "skill" / "node_modules" / ".bin").mkdir(parents=True)
+    (tmp_path / "skill" / "node_modules" / ".bin" / "promptfoo").write_text("")
+    skill.mkdir(parents=True)
+    project = tmp_path / "skill" / "proj"; project.mkdir()      # a project that sits under a folder that has PromptFoo
+    monkeypatch.chdir(skill)
+    no_which = lambda n: None
+    # without --project the parent walk finds the skill's dev copy (the old, misleading answer)
+    assert checks(promptfoo=True, which=no_which)["promptfoo"].status == "ok"
+    # with --project it looks only in the project, and says what to run
+    got = checks(promptfoo=True, which=no_which, project=str(project))["promptfoo"]
+    assert got.status == "fail" and f"--prefix {project}/.agent-redteam" in got.fix
+    (project / ".agent-redteam" / "node_modules" / ".bin").mkdir(parents=True)
+    (project / ".agent-redteam" / "node_modules" / ".bin" / "promptfoo").write_text("")
+    found = checks(promptfoo=True, which=no_which, project=str(project))["promptfoo"]
+    assert found.status == "ok" and str(project) in found.detail

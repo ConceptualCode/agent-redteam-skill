@@ -67,7 +67,12 @@ local) for a cheap first pass at whether a simple adversarial wrapper changes th
 is the stronger test but sends the agent's replies to PromptFoo's servers and needs `--remote` -- opt-in only, see
 `promptfoo-setup.md`.
 
-**`hijacking` needs PromptFoo's remote generation unconditionally** -- confirmed directly: with
+**Some plugins need PromptFoo's remote generation unconditionally.** `Catalog.load().needs_remote_generation(plugins)` lists
+them for your chosen set (the list is read from the installed PromptFoo's own source, not typed here): `hijacking`, `ssrf`,
+`bola`, `bfla`, `mcp`, `data-exfil`, `system-prompt-override`, `indirect-prompt-injection`, every `coding-agent:*` plugin, the vertical families
+(`ecommerce:*`, `medical:*`, `financial:*`, `pharmacy:*`, `insurance:*`, `telecom:*`, `realestate:*`) and more; not `shell-injection`,
+`tool-discovery`, `debug-access`, `excessive-agency` or `prompt-extraction`. With remote generation off they generate nothing, so the developer
+approves sending the target description + plugin config, or they are dropped and you say so. **`hijacking`** is the clearest case -- confirmed directly: with
 `PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true` set (`promptfoo-setup.md`'s recommended
 local-only default), it generates 0/0 tests and fails outright, no fallback to a local attacker
 model the way most other plugins have. If remote generation is staying off, drop `hijacking` from
@@ -92,7 +97,8 @@ any other remote-generation tradeoff.
 
 If the agent is specifically a **coding agent** (reads/writes a repo, runs in a sandbox, has CI/automation access),
 use the `coding-agent:*` family instead of the generic security plugins above -- it's purpose-built for exactly
-this. **There is no `coding-agent:core` or `coding-agent:all` alias** -- confirmed directly against a real
+this. **All of them generate on PromptFoo's servers** (the developer must approve that), and their scenarios name paths
+and tools of their own, so give the fixture what they name (`canary-oracle.md`, "Giving the attack its target"). **There is no `coding-agent:core` or `coding-agent:all` alias** -- confirmed directly against a real
 installed catalog (0.123.1): only 13 named leaf plugins exist, list them all yourself rather than reaching for a
 grouping alias that isn't there (`Catalog.load()` catches this before a run, but don't rely on the catch --
 write the real ids): `coding-agent:sandbox-read-escape`, `coding-agent:sandbox-write-escape`,

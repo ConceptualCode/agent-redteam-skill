@@ -13,5 +13,6 @@
   {"file": "agent-redteam/scripts/agent_redteam/vacuous_check.py", "mutations": "mutations/vacuous_check.json", "tests": "tests/test_vacuous_check.py"},
   {"file": "agent-redteam/scripts/agent_redteam/overfit_check.py", "mutations": "mutations/overfit_check.json", "tests": "tests/test_overfit_check.py"},
   {"file": "agent-redteam/scripts/agent_redteam/summarize.py", "mutations": "mutations/summarize.json", "tests": "tests/test_summarize.py"},
-  {"file": "agent-redteam/scripts/agent_redteam/redteam_config_check.py", "mutations": "mutations/redteam_config_check.json", "tests": "tests/test_redteam_config_check.py"}
+  {"file": "agent-redteam/scripts/agent_redteam/redteam_config_check.py", "mutations": "mutations/redteam_config_check.json", "tests": "tests/test_redteam_config_check.py"},
+  {"file": "agent-redteam/scripts/agent_redteam/canary.py", "mutations": "mutations/canary.json", "tests": "tests/test_canary.py"}
 ]

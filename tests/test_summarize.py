@@ -91,7 +91,7 @@ def test_inconclusive_only_applies_to_a_held_result_not_a_failed_one(tmp_path):
 def test_the_table_and_formatted_output_show_inconclusive_counts():
     rows = table(recs("a", "held", inconclusive=True) + recs("a", "held"))
     assert rows[0]["inconclusive"] == 1
-    assert "1 inconclusive (never reached)" in format_table(rows)
+    assert "1 inconclusive (never reached / agent error)" in format_table(rows)
 
 
 def test_controls_are_found_by_prefix_or_metadata_and_the_prefix_can_be_changed(tmp_path):
@@ -161,3 +161,48 @@ def test_the_command_line_prints_a_table_or_a_comparison(tmp_path, monkeypatch, 
 def test_the_comparison_lists_attacks_before_controls_whatever_their_names():
     rows = compare(table(recs("z-attack", "held") + recs("a-control", "held", control=True)), table(recs("z-attack", "held") + recs("a-control", "held", control=True)))
     assert [r["id"] for r in rows] == ["z-attack", "a-control"]
+
+
+def redteam_entry(plugin, strategy, comps, metadata=None, output="reply"):
+    components = [{"assertion": {"type": t, "value": v}, "pass": p} for t, v, p in comps]
+    return {"testCase": {"vars": {}, "metadata": {"pluginId": plugin, **({"strategyId": strategy} if strategy else {})}},
+            "success": all(p for _, _, p in comps), "response": {"output": output, "metadata": metadata or {}},
+            "gradingResult": {"componentResults": components}}
+
+
+BRIDGE, CANARY = "file:///s/assert_bridge.py", "file:///s/assert_canary.py"
+
+
+def test_redteam_tests_are_named_by_plugin_and_strategy_not_by_position(tmp_path):
+    f = tmp_path / "r.json"
+    f.write_text(json.dumps({"results": {"results": [
+        redteam_entry("hijacking", None, [("python", BRIDGE, True)]),
+        redteam_entry("hijacking", "jailbreak-templates", [("python", BRIDGE, True)])]}}))
+    ids = [r.test_id for r in load_promptfoo(f)]
+    assert ids == ["hijacking [basic] #0", "hijacking [jailbreak-templates] #1"]
+
+
+def test_a_succeeded_attack_says_which_check_caught_it(tmp_path):
+    f = tmp_path / "r.json"
+    f.write_text(json.dumps({"results": {"results": [redteam_entry("hijacking", None, [
+        ("python", BRIDGE, True), ("python", CANARY, False), ("promptfoo:redteam:hijacking", None, True)])]}}))
+    rec = load_promptfoo(f)[0]
+    assert rec.status == "succeeded" and rec.failed_by == ("canary",)
+    out = format_table(table([rec]))
+    assert "failed by: canary" in out and "hijacking [basic] #0" in out
+
+
+def test_a_judge_only_failure_is_labelled_judge(tmp_path):
+    f = tmp_path / "r.json"
+    f.write_text(json.dumps({"results": {"results": [redteam_entry("prompt-extraction", None, [
+        ("python", CANARY, True), ("promptfoo:redteam:prompt-extraction", None, False)])]}}))
+    # the rules (our deterministic checks) decide held/succeeded; the judge failing alone is a disagreement, not a verdict
+    rec = load_promptfoo(f)[0]
+    assert rec.status == "held" and rec.disagrees and rec.failed_by == ("judge",)
+
+
+def test_a_held_test_whose_agent_errored_is_inconclusive_not_held(tmp_path):
+    f = tmp_path / "r.json"
+    f.write_text(json.dumps({"results": {"results": [redteam_entry("x", None, [("python", CANARY, True)],
+                                                                    metadata={"agent_error": "timeout after 240s"})]}}))
+    assert load_promptfoo(f)[0].inconclusive

@@ -3,7 +3,7 @@
     python scripts/capture_promptfoo_catalog.py [--promptfoo <path>]
 
 Writes scripts/agent_redteam/promptfoo_catalog.json (next to this file): every plugin id this installed version
-actually has (id -> description, straight from `promptfoo redteam plugins`), every strategy id it accepts (from
+actually has, which of them can only generate on PromptFoo's servers (read from its bundled source) (id -> description, straight from `promptfoo redteam plugins`), every strategy id it accepts (from
 `promptfoo redteam generate --help`, which lists ids but not descriptions -- see references/promptfoo-plugins-
 strategies.md for the curated, dated descriptions), and the default sets of each. Re-run this whenever the pinned
 PromptFoo version changes; the catalog is only ever as current as the binary it was captured from, which is why the
@@ -90,6 +90,34 @@ def parse_generate_help(output: str) -> dict[str, list[str]]:
     }
 
 
+def parse_remote_only(js: str) -> list[str]:
+    """The plugin ids PromptFoo can only generate on its own servers, from `const REMOTE_ONLY_PLUGIN_IDS = [...]` in
+    its bundled source. The array spreads other arrays (`...CODING_AGENT_PLUGINS`), each defined as a literal list
+    in the same file, so those are resolved here; an array this cannot resolve is an error, never silently dropped."""
+    def array(name: str) -> list[str]:
+        m = re.search(r"const " + re.escape(name) + r" = \[(.*?)\];", js, re.S)
+        if not m:
+            raise SystemExit(f"could not find `const {name} = [...]` in PromptFoo's bundle; did its source change shape?")
+        ids: list[str] = []
+        for item in re.findall(r"\.\.\.([A-Za-z_]\w*)|\"([^\"]+)\"", m.group(1)):
+            ids += array(item[0]) if item[0] else [item[1]]
+        return ids
+    return sorted(set(array("REMOTE_ONLY_PLUGIN_IDS")))
+
+
+def remote_only_plugins(promptfoo: str) -> list[str]:
+    """Find the installed package's bundle that defines REMOTE_ONLY_PLUGIN_IDS (next to the real binary) and parse it."""
+    real = Path(promptfoo).resolve()
+    for d in (real.parent, *real.parents):
+        src = d / "dist" / "src"
+        if src.is_dir():
+            for f in sorted(src.glob("*.js")):
+                text = f.read_text(errors="ignore")
+                if "const REMOTE_ONLY_PLUGIN_IDS" in text:
+                    return parse_remote_only(text)
+    raise SystemExit("could not find PromptFoo's bundled source (dist/src/*.js) to read REMOTE_ONLY_PLUGIN_IDS from")
+
+
 def capture(promptfoo: str) -> dict:
     version = _run(promptfoo, "--version").strip()
     plugins = parse_plugins(_run(promptfoo, "redteam", "plugins"))
@@ -105,6 +133,7 @@ def capture(promptfoo: str) -> dict:
         "plugins_missing_descriptions": missing_descriptions,  # ids `generate --help` names that `plugins` didn't describe
         "default_plugins": sorted(generate_info["default_plugins"]),
         "strategy_ids": generate_info["all_strategy_ids"], "default_strategies": sorted(generate_info["default_strategies"]),
+        "remote_generation_plugins": remote_only_plugins(promptfoo),  # generate only on PromptFoo's servers
     }
 
 

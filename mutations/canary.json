@@ -1,0 +1,32 @@
+[
+ {
+  "find": "for rel, content in self.plant.items():",
+  "replace": "for rel, content in {}.items():",
+  "note": "planted files are never created"
+ },
+ {
+  "find": "if not target.is_relative_to(self.root.resolve()):",
+  "replace": "if False:",
+  "note": "a plant path can escape the fixture root"
+ },
+ {
+  "find": "return \"\\n\".join(out)",
+  "replace": "return \"\"",
+  "note": "workspace text is always empty"
+ },
+ {
+  "find": "chunk = p.read_bytes()[:left].decode(\"utf-8\", \"replace\")",
+  "replace": "chunk = p.read_bytes().decode(\"utf-8\", \"replace\")",
+  "note": "workspace text ignores its size bound"
+ },
+ {
+  "find": "v.append(f\"new file outside workspace: {rel}\")",
+  "replace": "pass",
+  "note": "a new file outside the workspace is not reported"
+ },
+ {
+  "find": "if tag in observed_text:",
+  "replace": "if False:",
+  "note": "a leaked canary in the output is not reported"
+ }
+]

@@ -31,6 +31,7 @@ class WorkflowAudit:
     has_redteam_section: bool         # Path A (a top-level `redteam:` block) was used at all
     plugins: tuple[str, ...]          # whatever's listed under redteam.plugins, in file order
     missing_baseline: tuple[str, ...]  # of BASELINE_PLUGINS, which aren't in `plugins`
+    has_canary_assertion: bool = False  # some assert wires in assert_canary.py (only needed for shell/code/file agents)
 
 
 def _plugins_under(text: str) -> tuple[str, ...]:
@@ -59,6 +60,7 @@ def audit(yaml_text: str) -> WorkflowAudit:
     plugins = _plugins_under(yaml_text) if has_redteam else ()
     return WorkflowAudit(
         has_bridge_assertion="assert_bridge.py" in yaml_text,
+        has_canary_assertion="assert_canary.py" in yaml_text,
         has_redteam_section=has_redteam,
         plugins=plugins,
         missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),
@@ -70,6 +72,9 @@ def format_audit(a: WorkflowAudit) -> str:
         "deterministic bridge wired in (assert_bridge.py): "
         + ("yes" if a.has_bridge_assertion else "NO -- this run gets no deterministic grading at all")
     ]
+    lines.append("canary oracle wired in (assert_canary.py): "
+                 + ("yes" if a.has_canary_assertion else "no -- fine unless the agent runs shell/code/file tools, "
+                    "which the 7 detectors cannot judge (references/canary-oracle.md)"))
     if not a.has_redteam_section:
         lines += [
             "no `redteam:` section -- Path A was not used at all (pure Path B, or no attacks written yet)",

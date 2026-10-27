@@ -5,7 +5,7 @@
   "note": "spend-needed never detected"
  },
  {
-  "find": "return num_tests * len(plugins) * (1 + len(strategies)) * len(languages or [\"en\"])",
+  "find": "return num_tests * len(plugins) * (1 + len(wrappers)) * len(languages or [\"en\"])",
   "replace": "return num_tests * len(plugins)",
   "note": "strategies and languages dropped from the test-count formula"
  },
@@ -33,5 +33,15 @@
   "find": "lang_line = f\"\\n  language: [{', '.join(languages)}]\" if languages else \"\"",
   "replace": "lang_line = \"\"",
   "note": "chosen languages never reach the config"
+ },
+ {
+  "find": "wrappers = [s for s in strategies if s != \"basic\"]",
+  "replace": "wrappers = list(strategies)",
+  "note": "basic counted as an extra wrapper in the test count"
+ },
+ {
+  "find": "canary_block = f\"    - type: python\\n      value: file://{canary_path}\\n\" if canary_path else \"\"",
+  "replace": "canary_block = \"\"",
+  "note": "the canary assertion is never written into the config"
  }
 ]

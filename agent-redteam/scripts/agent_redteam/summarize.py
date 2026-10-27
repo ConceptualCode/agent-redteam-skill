@@ -31,6 +31,7 @@ class Record:
     control: bool = False
     disagrees: bool = False   # the rule and the model grader gave different verdicts
     inconclusive: bool = False   # held, but vacuous_check says the planted content never actually reached the model
+    failed_by: tuple[str, ...] = ()   # which checks said "attack worked": bridge | canary | rule | judge
 
 
 def _test_id(result: dict, index: int) -> str:
@@ -39,7 +40,19 @@ def _test_id(result: dict, index: int) -> str:
     if from_var:
         return str(from_var)
     description = case.get("description")
-    return str(description).split(" (")[0] if description else f"test-{index}"
+    if description:
+        return str(description).split(" (")[0]
+    meta = case.get("metadata") or {}
+    if meta.get("pluginId"):      # a PromptFoo red-team test: name the plugin and strategy, not just a position
+        return f"{meta['pluginId']} [{meta.get('strategyId') or 'basic'}] #{index}"
+    return f"test-{index}"
+
+
+def _check_name(component: dict) -> str:
+    value = str((component.get("assertion") or {}).get("value", ""))
+    if (component.get("assertion") or {}).get("type") != "python":
+        return "judge"
+    return "bridge" if "assert_bridge" in value else "canary" if "assert_canary" in value else "rule"
 
 
 def load_promptfoo(path: str | Path, control_prefix: str = "ctl-") -> list[Record]:
@@ -71,8 +84,12 @@ def load_promptfoo(path: str | Path, control_prefix: str = "ctl-") -> list[Recor
         # reached the model (vacuous_check) -- only meaningful on a held result; a failed/succeeded attack never
         # gets this prefix in the first place (see bridge.evaluate_test), checked anyway as a safety guard against
         # an unrelated custom check's reason text starting with the same word by coincidence.
-        inconclusive = held and any(str(c.get("reason", "")).startswith("inconclusive:") for c in pycomponents)
-        records.append(Record(test_id, "held" if held else "succeeded", control, disagrees, inconclusive))
+        # an agent_error in the provider's metadata means the agent may not have run (or crashed part-way): a held
+        # verdict on such a test says nothing, so it is inconclusive too (references/canary-oracle.md)
+        agent_error = bool((response.get("metadata") or {}).get("agent_error"))
+        inconclusive = held and (agent_error or any(str(c.get("reason", "")).startswith("inconclusive:") for c in pycomponents))
+        failed_by = tuple(sorted({_check_name(c) for c in components if not c.get("pass")}))
+        records.append(Record(test_id, "held" if held else "succeeded", control, disagrees, inconclusive, failed_by))
     return records
 
 
@@ -86,7 +103,8 @@ def table(records: list[Record]) -> list[dict[str, Any]]:
         succeeded = sum(r.status == "succeeded" for r in rs)
         rows.append({"id": test_id, "control": rs[0].control, "runs": runs, "succeeded": succeeded,
                      "errors": sum(r.status == "error" for r in rs), "disagreements": sum(r.disagrees for r in rs),
-                     "inconclusive": sum(r.inconclusive for r in rs), "flaky": 0 < succeeded < runs})
+                     "inconclusive": sum(r.inconclusive for r in rs), "flaky": 0 < succeeded < runs,
+                     "failed_by": sorted({c for r in rs if r.status == "succeeded" for c in r.failed_by})})
     return sorted(rows, key=lambda row: (row["control"], row["id"]))
 
 
@@ -100,9 +118,10 @@ def format_table(rows: list[dict]) -> str:
         for r in part:
             note = ([" flaky"] * r["flaky"] + [f" {r['errors']} error(s)"] * bool(r["errors"])
                     + [f" grader disagreed {r['disagreements']}x"] * bool(r["disagreements"])
-                    + [f" {r['inconclusive']} inconclusive (never reached)"] * bool(r["inconclusive"]))
-            lines.append(f"  {r['id']:<34}{r['succeeded']}/{r['runs']}{''.join(note)}")
-        lines.append(f"  {'TOTAL':<34}{sum(r['succeeded'] for r in part)}/{sum(r['runs'] for r in part)}")
+                    + [f" {r['inconclusive']} inconclusive (never reached / agent error)"] * bool(r["inconclusive"])
+                    + [f" failed by: {', '.join(r['failed_by'])}"] * bool(r["failed_by"] and r["succeeded"]))
+            lines.append(f"  {r['id']:<{max(34, max(len(x['id']) for x in part) + 2)}}{r['succeeded']}/{r['runs']}{''.join(note)}")
+        lines.append(f"  {'TOTAL':<{max(34, max(len(x['id']) for x in part) + 2)}}{sum(r['succeeded'] for r in part)}/{sum(r['runs'] for r in part)}")
     return "\n".join(lines)
 
 

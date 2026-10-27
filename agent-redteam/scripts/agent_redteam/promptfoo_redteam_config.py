@@ -88,8 +88,10 @@ def needs_generation_spend(plugins: list[str]) -> bool:
 def estimate_test_count(num_tests: int, plugins: list[str], strategies: list[str], languages: list[str] | None = None) -> int:
     """PromptFoo's own documented formula for how many test cases a redteam config actually generates:
     numTests * plugins * (1 + strategies) * languages. The `+1` is the plugin's own unwrapped test, on top of
-    one wrapped copy per strategy."""
-    return num_tests * len(plugins) * (1 + len(strategies)) * len(languages or ["en"])
+    one wrapped copy per strategy -- so `basic`, which *is* that unwrapped test, adds nothing. Counting it as a
+    strategy overstated a real run by half (36 predicted, 24 generated: 12 plugins, `basic` + one wrapper)."""
+    wrappers = [s for s in strategies if s != "basic"]
+    return num_tests * len(plugins) * (1 + len(wrappers)) * len(languages or ["en"])
 
 
 def _target_providers_yaml(target: Target) -> str:
@@ -121,10 +123,13 @@ def model_role_warnings(target_model: str | None, generator_model: str | None, j
 def build_config(target: Target, context_file: str, plugins: list[str], strategies: list[str], purpose: str,
                  bridge_path: str, num_tests: int = 5, languages: list[str] | None = None,
                  catalog: Catalog | None = None, generator_model: str | None = None,
-                 judge_model: str | None = None) -> str:
+                 judge_model: str | None = None, canary_path: str | None = None) -> str:
     """The full promptfooconfig.yaml text. Raises ValueError before writing anything if a chosen plugin or
     strategy id isn't one this installed PromptFoo actually has -- a typo caught here, not after a real run
     fails to generate anything for it.
+
+    `canary_path` (the path to assert_canary.py) adds the canary oracle as a second `type: python` assertion beside
+    the bridge -- needed when the agent runs shell/code/file tools (references/canary-oracle.md).
     """
     if not plugins:
         raise ValueError("at least one plugin is required")
@@ -140,12 +145,14 @@ def build_config(target: Target, context_file: str, plugins: list[str], strategi
     # judge (traced in promptfoo's graders-*.js). Both are model ids like "openai:gpt-4.1-mini".
     generator_line = f"  provider: {generator_model}\n" if generator_model else ""
     judge_block = f"  options:\n    provider: {judge_model}\n" if judge_model else ""
+    canary_block = f"    - type: python\n      value: file://{canary_path}\n" if canary_path else ""
     return (
         "description: auto-generated red team run\n"
         'prompts: ["{{q}}"]\n'
         f"{_target_providers_yaml(target)}"
         f"defaultTest:\n{judge_block}  assert:\n    - type: python\n"
         f"      value: file://{bridge_path}\n      config:\n        context_file: {context_file}\n"
+        f"{canary_block}"
         f"redteam:\n{generator_line}  purpose: {json.dumps(purpose)}\n  numTests: {num_tests}\n"
         f"  plugins:\n{plugins_yaml}\n  strategies:\n{strategies_yaml}{lang_line}\n"
     )

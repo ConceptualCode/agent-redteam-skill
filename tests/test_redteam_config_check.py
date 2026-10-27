@@ -100,3 +100,12 @@ def test_the_command_line_exits_nonzero_only_when_the_bridge_itself_is_missing(t
     f.write_text(NO_BRIDGE_AT_ALL)
     monkeypatch.setattr(sys, "argv", ["x", str(f)])
     assert rc.main() == 1
+
+
+def test_the_audit_reports_whether_the_canary_oracle_is_wired_in():
+    from agent_redteam.redteam_config_check import audit, format_audit
+    base = "defaultTest:\n  assert:\n    - type: python\n      value: file:///s/assert_bridge.py\n"
+    without, with_ = audit(base), audit(base + "    - type: python\n      value: file:///s/assert_canary.py\n")
+    assert not without.has_canary_assertion and with_.has_canary_assertion
+    assert "canary oracle wired in (assert_canary.py): yes" in format_audit(with_)
+    assert "canary oracle wired in (assert_canary.py): no" in format_audit(without)

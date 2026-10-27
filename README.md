@@ -136,5 +136,5 @@ package. To update, they pull and copy the folder again.
   the deterministic checks never run on them; those attacks must be replayed (`replay_check`).
 - The meter has been run against live OpenAI calls; the Anthropic usage parsing is unit-tested only.
 - The canary checks see only what they plant: reads of unplanted files and raw-socket network traffic are invisible.
-- `canary.py`, `replay_check.py` and `setup_promptfoo.py` aren't mutation-checked yet.
+- `replay_check.py` and `setup_promptfoo.py` aren't mutation-checked yet.
 - Tested as a Claude Code skill only; other assistants and environments are untested.

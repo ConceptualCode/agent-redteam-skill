@@ -25,16 +25,27 @@ class Catalog:
     default_plugins: tuple[str, ...]
     strategy_ids: tuple[str, ...]
     default_strategies: tuple[str, ...]
+    # ids that only generate on PromptFoo's servers; None = this catalog file predates the field (unknown, not "none")
+    remote_generation_plugins: tuple[str, ...] | None = None
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> "Catalog":
         data = json.loads(Path(path or DEFAULT_PATH).read_text())
         return cls(data["captured_at"], data["promptfoo_version"], dict(data["plugins"]),
-                  tuple(data["default_plugins"]), tuple(data["strategy_ids"]), tuple(data["default_strategies"]))
+                  tuple(data["default_plugins"]), tuple(data["strategy_ids"]), tuple(data["default_strategies"]),
+                  tuple(data["remote_generation_plugins"]) if "remote_generation_plugins" in data else None)
 
     def unknown_plugins(self, ids: list[str]) -> list[str]:
         """Any id not in this catalog -- a typo, or one this installed PromptFoo version doesn't have."""
         return [i for i in ids if i not in self.plugins]
+
+    def needs_remote_generation(self, ids: list[str]) -> list[str]:
+        """The chosen plugins that cannot generate locally: with remote generation switched off they produce zero
+        tests (or fail), so either the developer approves sending the target description + plugin config, or they
+        are dropped. Raises if the catalog was captured before this was recorded, rather than answering "none"."""
+        if self.remote_generation_plugins is None:
+            raise ValueError("this catalog has no remote-generation list; re-run scripts/capture_promptfoo_catalog.py")
+        return [i for i in ids if i in self.remote_generation_plugins]
 
     def unknown_strategies(self, ids: list[str]) -> list[str]:
         return [i for i in ids if i not in self.strategy_ids]

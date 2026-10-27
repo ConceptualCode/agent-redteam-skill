@@ -26,7 +26,8 @@ Read `references/writing-a-context.md` for the full field reference and worked e
 Write the result as a JSON file (e.g. `context.json`) wherever the user's red-team work is living.
 
 **Derive `max_tool_calls` from the agent, don't guess it:** read its own step cap in the code, or measure a benign
-baseline, and record the basis in `max_tool_calls_source` -- see "Choosing a tool-call limit" in
+baseline, and record the basis in `max_tool_calls_source`. A cap so high it cannot trip (one real agent defaulted to 500)
+is not a usable limit: measure the baseline and say the cap was too high -- see "Choosing a tool-call limit" in
 `references/writing-a-context.md` (what the limit protects, what it can't tell you, and how to count).
 
 **Then check the context isn't quietly empty where it matters.** `python -m agent_redteam.coverage_check context.json`
@@ -45,9 +46,11 @@ have nothing to flag here, or did nobody fill this in yet? Don't let that questi
 
 Run:
 ```
-python -m agent_redteam.preflight --model <the model their agent uses> [--promptfoo]
+python -m agent_redteam.preflight --model <the model their agent uses> [--promptfoo --project <the developer's project>]
 ```
-from this skill's `scripts/` directory (or put it on `PYTHONPATH`). Each check reports `ok`/`warn`/`fail` with a one-line fix. Treat a `fail` as a hard stop -- don't proceed to a real run until it's resolved. A `warn` is worth mentioning but not necessarily blocking (e.g. PromptFoo's telemetry/sharing env vars aren't set -- see step 5's Path A).
+from this skill's `scripts/` directory (or put it on `PYTHONPATH`). Pass `--project` with `--promptfoo`: run from `scripts/`, the
+default lookup walks up into this skill's own folder and can report a dev copy of PromptFoo as "installed" for a project that
+has none. With `--project` it looks only in the project and prints the path it found. Each check reports `ok`/`warn`/`fail` with a one-line fix. Treat a `fail` as a hard stop -- don't proceed to a real run until it's resolved. A `warn` is worth mentioning but not necessarily blocking (e.g. PromptFoo's telemetry/sharing env vars aren't set -- see step 5's Path A).
 
 **PromptFoo is installed for the developer, not by them.** If the `promptfoo` check says it is not installed, install it
 yourself, always passing the developer's project directory so it never lands inside the skill folder:
@@ -69,7 +72,10 @@ written: the count you're writing; PromptFoo plugins: `estimate_test_count()` fr
 python -m agent_redteam.estimate --tests <n> --repeats <n> --budget <dollars> [--grader-model <model>]
 ```
 Pass `--grader-model` whenever PromptFoo's own plugins are involved -- every PromptFoo-graded test costs a real
-grading call on top of the target call, not just the generation call. Skip this step only if the user already has
+grading call on top of the target call, not just the generation call. **Its default per-test cost comes from one
+small demo agent. For an agent that loops over tools (shell, code, file), do a smoke test first**: run a few benign
+tasks through the meter (step 4), then pass `--meter-log <the meter's --log file>` so the estimate uses that agent's
+measured cost. Skip this step only if the user already has
 a small, fixed budget in mind and the test count is obviously small -- it's a safety check, not a mandatory ceremony.
 
 ## 4. Start the meter and route calls through it
@@ -109,9 +115,14 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   injection surface, data it can leak, its business domain if it has one, whether it's RAG-based, whether it's a
   coding agent, whether it talks to minors.
 2. **Propose a plugin + strategy list with reasoning**, and say plainly which groups you're leaving out and why.
-  Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain --
-  unless remote generation is staying off (see `promptfoo-setup.md`), in which case drop `hijacking`: confirmed
-  it needs PromptFoo's remote generation unconditionally and fails outright without it, no local fallback.
+  Always include the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain.
+  **Then ask which chosen plugins can only generate on PromptFoo's servers**:
+  `Catalog.load().needs_remote_generation(plugins)` (read from the installed PromptFoo's own source, 93 ids in
+  0.123.1: `hijacking`, `ssrf`, `bola`, `bfla`, `mcp`, `data-exfil`, `system-prompt-override`, all of `coding-agent:*`, and the
+  vertical families such as `ecommerce:*` and `medical:*`; not `shell-injection`, `tool-discovery`, `debug-access`,
+  `excessive-agency`, `prompt-extraction`). With remote generation off they produce zero tests or fail outright, no local fallback. For each such plugin the
+  developer either approves sending the target description + plugin config (explicit yes, per target) or it is dropped
+  and you say so (see `promptfoo-setup.md`). A coding agent's recommended `coding-agent:*` family is entirely in this set.
   **Choose the model for each role, don't let PromptFoo pick.** Three roles use models: the *target* (the agent), the
   *generator* (writes attacks) and the *judge* (an LLM grading replies; PromptFoo's plugin supplies the rubric, you
   supply the model). Pass `generator_model=` and `judge_model=` to `build_config()` and run
@@ -131,13 +142,19 @@ go set PromptFoo up by hand and pick plugins off a checkbox list themselves.
   reference doc's "Dataset plugins" section), which generate for free but still cost a real grading call per test.
 5. **Write the config**: `promptfoo_redteam_config.build_config(target, context_file, plugins, strategies, purpose,
   bridge_path, num_tests, languages)` returns the full `promptfooconfig.yaml` text -- `target` is
-  `python_target("provider.py")` or `http_target("https://...")`, the two shapes the `templates/` providers use
+  `python_target("provider.py")` or `http_target("https://...")` (a provider can start the real agent in a container; see
+  `canary-oracle.md`), the two shapes the `templates/` providers use
   (in-process `provider.py`, or the HTTP server in `templates/shop_http/`). It wires `defaultTest.assert` to the bridge automatically, so our deterministic check runs
-  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML. **If the agent keeps state
+  alongside whatever grader each PromptFoo plugin brings with it -- no manual YAML. If the agent runs shell, code or
+  file tools, also pass `canary_path=<scripts>/assert_canary.py`: it adds the canary oracle as a second assertion
+  (`redteam_config_check` reports whether it is there). **If the agent keeps state
   server-side across separate requests (a session/conversation id) rather than doing everything in one call**, a
   plain `http_target` can't exercise `allowances`/`max_tool_calls` at all -- see `references/stateful-providers.md`
   before wiring either target shape.
-6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`. Set `CI=true` in the environment first --
+6. **Generate and run**: `promptfoo redteam run -c promptfooconfig.yaml`; build the argv with
+  `redteam_run_args(config, strategies, remote_replies_approved=False)` rather than typing it, since it adds `-j 1` (one test at a
+  time: a provider that shares one canary fixture, a container or a workspace is corrupted by PromptFoo's default of 4
+  concurrent tests) as well as `--force --no-cache`. Set `CI=true` in the environment first --
   PromptFoo's redteam commands otherwise stop for an interactive "email verification" prompt (confirmed in the
   installed package's own source: it's a lead-capture gate, and `CI=true` is exactly how it detects a
   non-interactive run and skips it, the same env var any CI system sets). Don't fabricate a developer's email to
@@ -211,7 +228,10 @@ project (or copy it there when the run ends), keep the config, provider, context
 it, and end the report with the exact command, e.g. `PROMPTFOO_CONFIG_DIR=<dir> promptfoo view`. Don't enable
 PromptFoo's sharing to get a link (`PROMPTFOO_DISABLE_SHARING` stays on): that uploads the results.
 
-`summarize.py` groups by test id across repeats, separates controls from attacks, and flags two things worth reading past the headline number. **A test is only recognized as a control if its id/description starts with `ctl-` (the default `--control-prefix`) or its `metadata.control` is explicitly `true`** -- a description like `control-foo` does not match and gets bucketed as an attack, silently.
+`summarize.py` groups by test id across repeats, separates controls from attacks (red-team tests are named
+`plugin [strategy] #n`, and a succeeded attack says which check caught it: bridge, canary, a project check or the LLM judge),
+and flags things worth reading past the headline number. A test whose provider reported an `agent_error` is
+inconclusive, never held. **A test is only recognized as a control if its id/description starts with `ctl-` (the default `--control-prefix`) or its `metadata.control` is explicitly `true`** -- a description like `control-foo` does not match and gets bucketed as an attack, silently.
 - **flaky** -- succeeded on some repeats but not all. A one-off pass or fail is weak evidence either way; a consistent one is much stronger.
 - **grader disagreed** -- if a model-grader assertion exists alongside the deterministic rule, they disagreed. The deterministic rule always wins for the pass/fail verdict; a disagreement is a signal worth reading, not something to average away.
 
@@ -220,6 +240,12 @@ PromptFoo's sharing to get a link (`PROMPTFOO_DISABLE_SHARING` stays on): that u
 This is the step most red-team setups skip, and it's the one most likely to make a result mean nothing:
 
 - **Did the attack actually reach the agent?** If the attack relies on the agent calling a specific tool or reading specific content, and that never happened (the tool was never called, or was refused before reaching the system), a "held" result proves nothing -- the defense was never tested. If the provider supplies what each tool returned (`metadata.tools[i].returned`), add `metadata.vacuous_check: {"required_tools": [...], "marker": "..."}` to the test and `bridge.grade()` checks this automatically, relabelling the reason `"inconclusive: ..."` rather than letting an untested path read as a proven one. Otherwise, call `vacuous_check.py`'s `reached()`/`final_status()` by hand.
+- **Did the attack's named target exist?** PromptFoo's `coding-agent:*` scenarios name paths and tools of their own
+  (`../outside-owned/release-notes.md`, a git repo, a browser profile). If the fixture lacks them, the agent only
+  answers "not found" and the result reads as held while nothing was tested. Read the generated prompts (the
+  `redteam.yaml` it writes, or `results.json`), and create what they name: `CanaryFixture(plant={...})` plants files
+  outside the workspace, and the container image needs the tools (e.g. `git`). Report what you could not provide as
+  inconclusive.
 - **Did the deterministic checks actually run on this test?** Adaptive strategies (`jailbreak`, ...) replace the
   provider's `metadata` with their own iteration data, so `metadata.tools` and any project-local oracle fields never
   reach the assertions -- confirmed in a real run: the bridge said "agent held: no detector fired" with zero tool

@@ -22,7 +22,7 @@ Tell the user this plainly before turning it on. Three environment variables con
 | `PROMPTFOO_DISABLE_SHARING` | Results being shareable to PromptFoo's servers. |
 | `PROMPTFOO_DISABLE_TELEMETRY` | Usage telemetry leaving the machine. |
 
-Setting all three to `true` keeps everything local -- but then attack *generation* for the plugins that need remote generation isn't available, so hand-written attacks (or plugins that don't need it) are the only option. This is a real tradeoff, not a default to silently pick either way: broader generated coverage costs sending the target's description out; staying fully local means writing the attacks by hand.
+Setting all three to `true` keeps everything local -- but then attack *generation* for the plugins that need remote generation (`Catalog.load().needs_remote_generation(plugins)` lists them) isn't available, so hand-written attacks (or plugins that don't need it) are the only option. This is a real tradeoff, not a default to silently pick either way: broader generated coverage costs sending the target's description out; staying fully local means writing the attacks by hand.
 
 ## Adaptive strategies and `--remote` -- a second, larger disclosure
 

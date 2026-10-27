@@ -45,3 +45,52 @@ def test_the_command_line_filters_by_prefix_and_can_list_strategies_instead(tmp_
     monkeypatch.setattr(sys, "argv", ["x", "--strategies", "--prefix", "jail"])
     assert pc.main() == 0
     assert capsys.readouterr().out.strip() == "jailbreak"
+
+
+JS = '''
+const CODING_AGENT_PLUGINS = [
+	"coding-agent:secret-env-read",
+	"coding-agent:sandbox-write-escape"
+];
+const MEDICAL_PLUGINS = ["medical:hallucination"];
+const REMOTE_ONLY_PLUGIN_IDS = [
+	"hijacking",
+	"ssrf",
+	...CODING_AGENT_PLUGINS,
+	...MEDICAL_PLUGINS
+];
+'''
+
+
+def test_remote_only_ids_are_read_from_the_bundle_including_spread_arrays():
+    import capture_promptfoo_catalog as cap
+    assert cap.parse_remote_only(JS) == ["coding-agent:sandbox-write-escape", "coding-agent:secret-env-read",
+                                         "hijacking", "medical:hallucination", "ssrf"]
+
+
+def test_an_unresolvable_spread_is_an_error_not_silently_dropped():
+    import capture_promptfoo_catalog as cap
+    import pytest
+    with pytest.raises(SystemExit):
+        cap.parse_remote_only('const REMOTE_ONLY_PLUGIN_IDS = ["a", ...MISSING_ARRAY];')
+
+
+def test_needs_remote_generation_lists_only_the_chosen_remote_plugins(tmp_path):
+    cat = Catalog.load(_write(tmp_path, remote_generation_plugins=["hijacking", "ssrf"]))
+    assert cat.needs_remote_generation(["excessive-agency", "hijacking", "ssrf"]) == ["hijacking", "ssrf"]
+    assert cat.needs_remote_generation(["excessive-agency"]) == []
+
+
+def test_a_catalog_without_the_list_refuses_to_answer_rather_than_saying_none(tmp_path):
+    import pytest
+    cat = Catalog.load(_write(tmp_path))
+    assert cat.remote_generation_plugins is None
+    with pytest.raises(ValueError):
+        cat.needs_remote_generation(["hijacking"])
+
+
+def test_the_shipped_catalog_knows_which_plugins_need_remote_generation():
+    cat = Catalog.load()
+    assert cat.needs_remote_generation(["hijacking", "coding-agent:secret-env-read", "ecommerce:pci-dss"]) == \
+        ["hijacking", "coding-agent:secret-env-read", "ecommerce:pci-dss"]
+    assert cat.needs_remote_generation(["excessive-agency", "prompt-extraction", "shell-injection"]) == []

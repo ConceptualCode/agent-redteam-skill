@@ -101,3 +101,19 @@ def test_warns_when_the_judge_is_the_target_or_unset():
     assert any("same model as the target" in w for w in model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-4.1-mini"))
     assert any("no judge model" in w for w in model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", None))
     assert model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-4.1") == []
+
+
+def test_basic_is_the_plugins_own_test_not_an_extra_wrapper():
+    # a real run: 12 plugins with ["basic", "jailbreak-templates"] generated 24 tests, not 36
+    assert estimate_test_count(1, ["p"] * 12, ["basic", "jailbreak-templates"]) == 24
+    assert estimate_test_count(2, ["a", "b"], ["basic"]) == 4
+
+
+def test_build_config_adds_the_canary_assertion_beside_the_bridge_only_when_asked():
+    base = dict(target=python_target("/p.py"), context_file="/c.json", plugins=["excessive-agency"],
+                strategies=["basic"], purpose="x", bridge_path="/b.py")
+    plain = build_config(**base)
+    assert "assert_canary" not in plain and plain.count("- type: python") == 1
+    with_canary = build_config(**base, canary_path="/scripts/assert_canary.py")
+    assert with_canary.count("- type: python") == 2
+    assert with_canary.index("/b.py") < with_canary.index("/scripts/assert_canary.py") < with_canary.index("redteam:")

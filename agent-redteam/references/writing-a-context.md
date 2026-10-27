@@ -30,6 +30,8 @@ it, and nobody can tell which from the number. So derive it, and write down how:
    count. If one exists, the limit is that cap plus any fixed overhead your provider adds to the count (a router
    dispatch entry, say); exceeding it means the agent's intended control failed, which is the most defensible use of
    this detector. Multi-agent systems: add the caps of every agent a request can chain through.
+   If the cap is so high it can never trip (a default of 500 iterations, say), it is not a usable limit: treat it as
+   "no meaningful cap", report that, and use step 3.
 2. **No cap in the code is itself a finding.** An agent with an unbounded loop has no intended ceiling; say so in the
    report instead of inventing one, then use step 3.
 3. **Measure a benign baseline.** Run several ordinary tasks (including a multi-step one) a couple of times each
