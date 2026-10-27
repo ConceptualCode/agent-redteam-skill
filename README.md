@@ -103,6 +103,8 @@ The runners that prove them live in `demo/*/run.py` and share `tools/e2e/harness
     npm install                      # Node 22.22+; a dev copy of the pinned PromptFoo for the demos
 
 ### Before every commit
+Changes reach `main` through a pull request whose `pytest` checks (Python 3.10, 3.12, 3.14) pass; direct pushes are blocked. See `CONTRIBUTING.md`.
+
     .venv/bin/python -m pytest                      # unit tests, including the skill-format rules
     .venv/bin/python tools/mutation_all.py          # must say "all mutations caught"
     for d in shop email file notes shop_http; do .venv/bin/python demo/$d/run.py node_modules/.bin/promptfoo; done
