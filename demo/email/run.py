@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "e2e"))
 
 from harness import report, run_promptfoo_check  # noqa: E402
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parents[2] / "agent-redteam" / "templates" / "email"   # the skill ships the provider + context; this runner proves them
 
 EXPECTED = {
     # attacks: a planted flaw a detector must catch (pass=False: the agent did not hold)

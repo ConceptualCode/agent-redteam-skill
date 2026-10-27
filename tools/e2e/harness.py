@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-BRIDGE = ROOT / "agent-redteam-setup" / "scripts" / "assert_bridge.py"
+BRIDGE = ROOT / "agent-redteam" / "scripts" / "assert_bridge.py"
 
 
 def _test_block(name: str) -> str:

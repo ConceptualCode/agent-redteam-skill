@@ -1,8 +1,8 @@
 """Capture PromptFoo's real plugin/strategy catalog from the installed binary -- never hand-maintained, never guessed.
 
-    python tools/capture_promptfoo_catalog.py [--promptfoo <path>]
+    python scripts/capture_promptfoo_catalog.py [--promptfoo <path>]
 
-Writes agent-redteam-setup/scripts/agent_redteam/promptfoo_catalog.json: every plugin id this installed version
+Writes scripts/agent_redteam/promptfoo_catalog.json (next to this file): every plugin id this installed version
 actually has (id -> description, straight from `promptfoo redteam plugins`), every strategy id it accepts (from
 `promptfoo redteam generate --help`, which lists ids but not descriptions -- see references/promptfoo-plugins-
 strategies.md for the curated, dated descriptions), and the default sets of each. Re-run this whenever the pinned
@@ -19,8 +19,7 @@ import subprocess
 from datetime import date, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "agent-redteam-setup" / "scripts" / "agent_redteam" / "promptfoo_catalog.json"
+OUT = Path(__file__).resolve().parent / "agent_redteam" / "promptfoo_catalog.json"
 
 _BANNER = re.compile(r"ExperimentalWarning|trace-warnings|^=+$|lower than the latest|Please run|^\s*$")
 _PLUGIN_LINE = re.compile(r"^([a-zA-Z0-9][\w:.-]*): (.+)$")
@@ -115,7 +114,7 @@ def main() -> int:
     args = ap.parse_args()
     data = capture(_find_promptfoo(args.promptfoo))
     OUT.write_text(json.dumps(data, indent=2) + "\n")
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(data['plugins'])} plugins, {len(data['strategy_ids'])} strategies "
+    print(f"wrote {OUT}: {len(data['plugins'])} plugins, {len(data['strategy_ids'])} strategies "
           f"(promptfoo {data['promptfoo_version']})")
     if data["plugins_missing_descriptions"]:
         print(f"note: {len(data['plugins_missing_descriptions'])} id(s) from --help had no description in `redteam plugins`: "

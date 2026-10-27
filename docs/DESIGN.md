@@ -1,6 +1,6 @@
 # Design
 
-How this toolkit is put together, and why it's shaped this way. `SKILL.md` is the workflow a developer (or Claude, acting
+How this toolkit is put together, and why it's shaped this way. The skill itself is the `agent-redteam/` folder (`SKILL.md`, `references/`, `scripts/`, `templates/`); `tests/`, `mutations/`, `tools/`, `demo/` and this file are for developing it. `SKILL.md` is the workflow a developer (or Claude, acting
 for one) follows; this doc is the architecture underneath it. `README.md` is the quick reference.
 
 ## Problem this solves
@@ -58,7 +58,7 @@ Two frozen dataclasses everything else shares:
   `allowed_hosts`/`allowed_email_domains` (`None` skips the check, an empty set blocks everything),
   `forbidden_tools`, `allowances` (attempts per tool per window), `arg_bounds` (`"tool.arg" -> (min, max)`),
   `max_reply_chars`, `max_tool_calls`. `RedTeamContext.from_dict()` reads it from the JSON file a user writes by
-  hand (see `references/writing-a-context.md`). No field for a secret or planted-instruction leak -- see
+  hand (see `agent-redteam/references/writing-a-context.md`). No field for a secret or planted-instruction leak -- see
   "Detectors" below for why.
 
 Keeping this generic (no `discount_percent` field, no `refund_tool` field) is a deliberate choice: every detector
@@ -92,7 +92,7 @@ judging the actual reply, which is a real, deliberate cost (a real model call, n
 surface of its own in whatever reads the transcript to grade it). An `llm_rubric.py` module doing exactly that
 was built, then deliberately removed along with the two detectors -- that cost wasn't judged worth building into
 this toolkit by default. There is no detector or grading path for a secret or planted-instruction leak here
-today -- `references/detectors.md` covers what a project should do if it needs one.
+today -- `agent-redteam/references/detectors.md` covers what a project should do if it needs one.
 
 `run(names, result, ctx)` executes the named detectors and prefixes each reason with the detector that found it, so
 a report always says *which* check fired, not just that something did.
@@ -235,7 +235,7 @@ machinery for closing that gap without spending money: it builds a throwaway Pro
 provider + context, runs it for real (`promptfoo eval`, no model called -- the "model" is a deterministic Python
 function keyed on the one-word prompt), and reports whether each test's verdict matched what was expected.
 
-`demo/shop/`, `demo/email/`, `demo/file/` are three such scripted agents, each with a real planted flaw per generic
+`demo/shop/`, `demo/email/`, `demo/file/` are three such scripted agents (their `provider.py` and `context.json` live in `agent-redteam/templates/`; `demo/*/run.py` runs them), each with a real planted flaw per generic
 detector, each paired with a control proving the same detector doesn't fire on ordinary behavior. `demo/shop_http/`
 re-runs the shop agent's cases over a real local HTTP server instead of an in-process call, proving detection
 survives an actual network hop (PromptFoo's `http` provider, not its python provider) -- the shape a real downstream
@@ -260,7 +260,7 @@ rather than kept as a second, overlapping fixture. `harness.py` itself stays; ev
 
 ## PromptFoo plugin/strategy auto-setup (`promptfoo_catalog.py`, `promptfoo_redteam_config.py`)
 
-- **`promptfoo_catalog.py`** -- a `Catalog` read from `promptfoo_catalog.json`, which `tools/capture_promptfoo_catalog.py`
+- **`promptfoo_catalog.py`** -- a `Catalog` read from `promptfoo_catalog.json`, which `agent-redteam/scripts/capture_promptfoo_catalog.py`
   generates by actually running the installed `promptfoo` binary (`redteam plugins`, `redteam generate --help`) and
   parsing its output -- never hand-typed from docs or memory, so it can't silently drift from whatever version is
   pinned. `unknown_plugins()`/`unknown_strategies()` catch a typo or an id this installed version doesn't have,
@@ -275,7 +275,7 @@ rather than kept as a second, overlapping fixture. `harness.py` itself stays; ev
   every plugin needs a real attacker-model call to generate its adversarial prompts -- confirmed empirically that
   only the Dataset-category plugins (`harmbench` tested directly: generated with no API key at all) are free to
   generate from, and even those still cost a real grading call per test.
-- **The plugin *selection* itself stays Claude's job, not a script's** -- `references/promptfoo-plugins-strategies.md`
+- **The plugin *selection* itself stays Claude's job, not a script's** -- `agent-redteam/references/promptfoo-plugins-strategies.md`
   is a decision guide, not an automated classifier, for the same reason the regex-based pack detectors were removed:
   mapping arbitrary agent code to the right subset of 155 ids needs actual comprehension, and a keyword-matching
   heuristic here would reintroduce the exact false-confidence problem this project spent effort removing elsewhere.

@@ -46,7 +46,7 @@ it, and nobody can tell which from the number. So derive it, and write down how:
 
 These are real, complete, tested contexts from this project's own demo agents -- start from whichever is closest to the agent being tested rather than writing one from nothing.
 
-**A shop/commerce assistant** (`demo/shop/context.json`):
+**A shop/commerce assistant** (`templates/shop/context.json`):
 ```json
 {
   "forbidden_tools": ["override_price"],
@@ -57,7 +57,7 @@ These are real, complete, tested contexts from this project's own demo agents --
 }
 ```
 
-**An email assistant** (`demo/email/context.json`) -- note the allow-lists, since an agent that reads and sends mail is exactly where exfiltration via a link or an external address matters most:
+**An email assistant** (`templates/email/context.json`) -- note the allow-lists, since an agent that reads and sends mail is exactly where exfiltration via a link or an external address matters most:
 ```json
 {
   "forbidden_tools": ["forward_to_external"],
@@ -69,7 +69,7 @@ These are real, complete, tested contexts from this project's own demo agents --
 }
 ```
 
-**A file-access assistant** (`demo/file/context.json`) -- note the tighter `max_reply_chars`/`max_tool_calls`, since dumping a whole file or looping through many reads is exactly the failure mode worth bounding tightly here:
+**A file-access assistant** (`templates/file/context.json`) -- note the tighter `max_reply_chars`/`max_tool_calls`, since dumping a whole file or looping through many reads is exactly the failure mode worth bounding tightly here:
 ```json
 {
   "forbidden_tools": ["delete_file"],

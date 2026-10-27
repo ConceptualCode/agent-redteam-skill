@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+TEMPLATES = HERE.parents[1] / "agent-redteam" / "templates"
 sys.path.insert(0, str(HERE.parents[1] / "tools" / "e2e"))
 sys.path.insert(0, str(HERE.parents[0] / "shop"))
 
@@ -36,11 +37,11 @@ def _wait_until_up(port: int, timeout: float = 5.0) -> None:
 
 
 def main(promptfoo: str) -> int:
-    server = subprocess.Popen([sys.executable, str(HERE / "server.py"), "--port", str(PORT)],
+    server = subprocess.Popen([sys.executable, str(TEMPLATES / "shop_http" / "server.py"), "--port", str(PORT)],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         _wait_until_up(PORT)
-        got, raw = run_promptfoo_check_http(f"http://127.0.0.1:{PORT}/", HERE.parents[0] / "shop" / "context.json",
+        got, raw = run_promptfoo_check_http(f"http://127.0.0.1:{PORT}/", TEMPLATES / "shop" / "context.json",
                                             EXPECTED, promptfoo)
     finally:
         server.terminate()

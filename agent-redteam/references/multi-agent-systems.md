@@ -9,7 +9,7 @@ separate things to test, not one, and skipping the second is easy to do without 
 Nothing about `RedTeamContext`/the detectors/`provider.py` is single-agent-only -- each is wired
 per capability surface: one `context.json` + one provider pointed at whatever you're testing. A
 system with several sub-agents just means doing that once per sub-agent, the same way
-`demo/shop`/`demo/email`/`demo/file` are already three separate "agents" tested this way, each with
+`templates/shop`/`templates/email`/`templates/file` are already three separate "agents" tested this way, each with
 its own context.
 
 A provider that bypasses the router and calls one sub-agent directly -- importing its class and

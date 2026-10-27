@@ -56,8 +56,8 @@ In `promptfooconfig.yaml`, the assertion that grades every test:
 defaultTest:
   assert:
     - type: python
-      value: file://path/to/agent-redteam-setup/scripts/assert_bridge.py
+      value: file://path/to/agent-redteam/scripts/assert_bridge.py
       config:
         context_file: path/to/context.json
 ```
-The provider must return the reply as `output` and any tool calls as `metadata.tools` -- a list of `{"name": ..., "args": {...}, "refused": false}` objects. `demo/shop/provider.py` and `demo/shop_http/server.py` (the same agent, one in-process, one over real HTTP) are both complete, working examples of a provider in this shape.
+The provider must return the reply as `output` and any tool calls as `metadata.tools` -- a list of `{"name": ..., "args": {...}, "refused": false}` objects. `templates/shop/provider.py` and `templates/shop_http/server.py` (the same agent, one in-process, one over real HTTP) are both complete, working examples of a provider in this shape.

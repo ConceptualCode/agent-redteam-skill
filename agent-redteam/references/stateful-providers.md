@@ -5,7 +5,7 @@ one PromptFoo Result, because that's the only unit the bridge ever sees: it read
 `metadata.tools` off whatever one Result the provider handed back, and nothing else.
 
 That's a safe assumption for an agent that does its own looping internally and returns everything
-it did in one response -- every demo under `demo/` works this way, including `demo/shop_http/`
+it did in one response -- every template under `templates/` works this way, including `templates/shop_http/`
 (it's served over real HTTP, but the one call still returns the whole scripted scenario).
 
 It's the wrong assumption for a real agent that keeps its state on the server (a session or

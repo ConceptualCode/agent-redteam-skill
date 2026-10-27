@@ -67,7 +67,7 @@ def test_promptfoo_is_found_from_a_subdirectory_of_where_it_was_installed(tmp_pa
     # found testing the skill for real: preflight run from scripts/ one level under where `npm install` put it
     (tmp_path / "node_modules" / ".bin").mkdir(parents=True)
     (tmp_path / "node_modules" / ".bin" / "promptfoo").write_text("")
-    deeper = tmp_path / "agent-redteam-setup" / "scripts"
+    deeper = tmp_path / "agent-redteam" / "scripts"
     deeper.mkdir(parents=True)
     monkeypatch.chdir(deeper)
     assert checks(promptfoo=True, which=lambda n: None)["promptfoo"].status == "ok"

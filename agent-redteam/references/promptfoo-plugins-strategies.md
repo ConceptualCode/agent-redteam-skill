@@ -1,5 +1,17 @@
 # Choosing PromptFoo plugins and strategies
 
+## Contents
+- How to use this file
+- What our bridge can actually grade, vs. what only PromptFoo's own grader can
+- Baseline -- propose these for essentially any agent
+- Tool & permission boundaries -- the agent calls tools, has roles, or acts on another system
+- Prompt injection -- the agent reads untrusted content (web pages, documents, tool output, another user's input)
+- Data leakage & extraction -- the agent has access to secrets, PII, or a knowledge base
+- Vertical compliance -- the agent's business domain, if it has one
+- Content safety, bias, and brand -- usually PromptFoo's own default set already covers this
+- Dataset plugins -- the only ones that generate for free
+- Strategies -- picking how attacks get delivered
+
 PromptFoo ships 155 red-team plugins and ~35 strategies in this installed version -- running it with no selection
 tests mostly generic trust/safety content (bias, slurs, hallucination), and **not** authorization, injection, tool
 misuse, or any vertical-specific compliance category unless you name them explicitly. PromptFoo itself does not read
@@ -8,7 +20,7 @@ wizard). That's the job this reference exists for: read the agent's actual code,
 propose a plugin/strategy set with reasoning, the same way this project reasons about everything else -- no guessing,
 no "just enable the defaults and call it red-teamed."
 
-The ids and descriptions below are captured from the installed binary (`tools/capture_promptfoo_catalog.py`,
+The ids and descriptions below are captured from the installed binary (`scripts/capture_promptfoo_catalog.py`,
 stored in `promptfoo_catalog.json`), not hand-typed from docs or memory -- re-run that script and re-check this file
 if the pinned PromptFoo version changes. Current capture: **promptfoo_catalog.json's `captured_at`/`promptfoo_version`
 fields say when and against what**.
