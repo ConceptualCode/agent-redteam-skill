@@ -5,6 +5,7 @@ import pytest
 from agent_redteam.promptfoo_catalog import Catalog
 from agent_redteam.promptfoo_redteam_config import (
     build_config, estimate_test_count, http_target, needs_generation_spend, python_target,
+    model_role_warnings, redteam_run_args, strategies_sending_replies_remote,
 )
 
 
@@ -66,3 +67,37 @@ def test_build_config_includes_languages_when_given(tmp_path):
 def test_build_config_requires_at_least_one_plugin(tmp_path):
     with pytest.raises(ValueError, match="at least one plugin"):
         build_config(python_target("p.py"), "c.json", [], ["basic"], "p", "b.py", catalog=_catalog(tmp_path))
+
+
+def test_jailbreak_is_flagged_as_sending_replies_remote_but_templates_are_not():
+    assert strategies_sending_replies_remote(["basic", "jailbreak", "jailbreak-templates"]) == ["jailbreak"]
+    assert strategies_sending_replies_remote(["basic", "jailbreak-templates", "base64"]) == []
+
+
+def test_run_args_add_remote_only_with_approval_and_an_adaptive_strategy():
+    assert "--remote" in redteam_run_args("c.yaml", ["basic", "jailbreak"], remote_replies_approved=True)
+    assert "--remote" not in redteam_run_args("c.yaml", ["basic", "jailbreak-templates"], remote_replies_approved=True)
+    assert "--remote" not in redteam_run_args("c.yaml", ["basic"], remote_replies_approved=False)
+
+
+def test_run_args_refuse_an_adaptive_strategy_without_approval():
+    with pytest.raises(ValueError, match="explicit approval"):
+        redteam_run_args("c.yaml", ["jailbreak"], remote_replies_approved=False)
+
+
+def test_generator_and_judge_models_are_written_to_the_config(tmp_path):
+    y = build_config(python_target("p.py"), "c.json", ["bola"], ["basic"], "a bot", "/b.py",
+                     catalog=_catalog(tmp_path), generator_model="openai:gpt-4.1", judge_model="anthropic:claude-sonnet-5-5")
+    assert "redteam:\n  provider: openai:gpt-4.1\n" in y
+    assert "defaultTest:\n  options:\n    provider: anthropic:claude-sonnet-5-5\n  assert:" in y
+
+
+def test_no_model_roles_leaves_the_config_unchanged(tmp_path):
+    y = build_config(python_target("p.py"), "c.json", ["bola"], ["basic"], "a bot", "/b.py", catalog=_catalog(tmp_path))
+    assert "options:" not in y and "provider: openai" not in y
+
+
+def test_warns_when_the_judge_is_the_target_or_unset():
+    assert any("same model as the target" in w for w in model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-4.1-mini"))
+    assert any("no judge model" in w for w in model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", None))
+    assert model_role_warnings("gpt-4.1-mini", "openai:gpt-4.1", "openai:gpt-4.1") == []

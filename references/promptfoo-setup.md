@@ -28,6 +28,27 @@ Tell the user this plainly before turning it on. Three environment variables con
 
 Setting all three to `true` keeps everything local -- but then attack *generation* for the plugins that need remote generation isn't available, so hand-written attacks (or plugins that don't need it) are the only option. This is a real tradeoff, not a default to silently pick either way: broader generated coverage costs sending the target's description out; staying fully local means writing the attacks by hand.
 
+## Adaptive strategies and `--remote` -- a second, larger disclosure
+
+Remote *generation* (above) sends the target description and plugin config. **Adaptive attack strategies send
+more: the agent's actual replies.** `jailbreak` (an alias for `jailbreak:meta`), `jailbreak:composite`,
+`jailbreak:hydra`/`hydra`, `best-of-n`, `citation`, `gcg` and `jailbreak:likert` use an attacker model that reads each
+reply and rewrites the next attack, and in this PromptFoo version that runs on PromptFoo's servers. A reply can contain
+file contents, tool output or a leaked secret, so this needs its own explicit yes -- approving remote generation does
+not cover it.
+
+How it behaves, confirmed by a real run: with `OPENAI_API_KEY` set, PromptFoo does *not* enable remote inference by
+itself. Generation can succeed and spend money, then the eval stage fails with "jailbreak:meta strategy requires
+remote generation, which is currently disabled for this configuration". Passing `--remote` to `promptfoo redteam run`
+is what turns it on. Don't unset `PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION` and expect that to be enough, and
+don't work around it silently by swapping the strategy.
+
+Workflow: (1) tell the developer which chosen strategies do this (`strategies_sending_replies_remote()`); (2) offer
+the local alternative (`jailbreak-templates`, `base64`, `rot13`, ... -- fixed wrappers, nothing leaves the machine,
+less adaptive); (3) only on an explicit yes, run `redteam_run_args(config, strategies, remote_replies_approved=True)`.
+The remote attacker's own calls are PromptFoo's, not routed through the local meter, so the budget cap covers only
+the target and the local grader.
+
 ## Wiring the bridge
 
 In `promptfooconfig.yaml`, the assertion that grades every test:

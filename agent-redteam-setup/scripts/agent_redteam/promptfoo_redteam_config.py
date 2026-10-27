@@ -31,6 +31,37 @@ FREE_GENERATION_PLUGINS: frozenset[str] = frozenset({
 # narrowest one that means only this and claims nothing else about the environment.
 CI_BYPASS_ENV: dict[str, str] = {"CI": "true"}
 
+# Adaptive strategies: an attacker model reads the target's *replies* and rewrites the next attack, and in this
+# PromptFoo version that rewriting runs on PromptFoo's servers. Traced in the installed package's own source
+# (node_modules/promptfoo/dist/src/{iterativeMeta,hydra,bestOfN,strategies}-*.js): each throws "requires remote
+# generation" unless remote inference is on, and with an OPENAI_API_KEY set PromptFoo does not turn it on by itself
+# -- `promptfoo redteam run --remote` is what does. `jailbreak` is an alias for `jailbreak:meta`, so it is in this
+# set (an older note here called it "no remote call needed"; a real run proved that wrong). Static, local
+# alternatives: `jailbreak-templates`, `base64`, `rot13`, `leetspeak`, ...
+REMOTE_REPLY_STRATEGIES: frozenset[str] = frozenset({
+    "jailbreak", "jailbreak:meta", "jailbreak:composite", "jailbreak:hydra", "hydra", "best-of-n", "citation", "gcg",
+    "jailbreak:likert",
+})
+
+
+def strategies_sending_replies_remote(strategies: list[str]) -> list[str]:
+    """The chosen strategies that send the target's replies to PromptFoo's servers. Non-empty means the developer
+    must be told, and must agree, before a run -- this goes beyond the target description + plugin config that
+    remote *generation* sends."""
+    return [s for s in strategies if s in REMOTE_REPLY_STRATEGIES]
+
+
+def redteam_run_args(config_path: str, strategies: list[str], remote_replies_approved: bool) -> list[str]:
+    """argv for `promptfoo redteam run`. Adds `--remote` only if the developer explicitly approved replies leaving
+    the machine AND an adaptive strategy is actually chosen; raises if one is chosen without approval, rather than
+    letting the run fail halfway (after generation has already spent money) or silently dropping the strategy."""
+    needs = strategies_sending_replies_remote(strategies)
+    if needs and not remote_replies_approved:
+        raise ValueError(f"{needs} send the agent's replies to PromptFoo's servers; get the developer's explicit "
+                         "approval first, or use a local strategy such as jailbreak-templates")
+    args = ["promptfoo", "redteam", "run", "-c", config_path, "--force", "--no-cache", "-j", "1"]
+    return args + (["--remote"] if needs else [])
+
 
 @dataclass(frozen=True)
 class Target:
@@ -72,9 +103,25 @@ def _target_providers_yaml(target: Target) -> str:
     )
 
 
+def model_role_warnings(target_model: str | None, generator_model: str | None, judge_model: str | None) -> list[str]:
+    """Plain-language warnings about who plays which role. Three roles use models: the target (the agent under
+    test), the generator (writes attacks), the judge (an LLM grading replies). One model in all three is easy but
+    weak: a judge from the same family as the target tends to rate that family's replies as fine."""
+    out = []
+    if not judge_model:
+        out.append("no judge model set: PromptFoo falls back to its own default grader, which may be an unpriced "
+                   "model the meter refuses (or one that bypasses the meter)")
+    elif target_model and judge_model.split(":")[-1] == target_model.split(":")[-1]:
+        out.append(f"judge ({judge_model}) is the same model as the target; prefer a different or stronger judge")
+    if not generator_model:
+        out.append("no generator model set: PromptFoo picks its own default attack-writing model")
+    return out
+
+
 def build_config(target: Target, context_file: str, plugins: list[str], strategies: list[str], purpose: str,
                  bridge_path: str, num_tests: int = 5, languages: list[str] | None = None,
-                 catalog: Catalog | None = None) -> str:
+                 catalog: Catalog | None = None, generator_model: str | None = None,
+                 judge_model: str | None = None) -> str:
     """The full promptfooconfig.yaml text. Raises ValueError before writing anything if a chosen plugin or
     strategy id isn't one this installed PromptFoo actually has -- a typo caught here, not after a real run
     fails to generate anything for it.
@@ -89,12 +136,16 @@ def build_config(target: Target, context_file: str, plugins: list[str], strategi
     plugins_yaml = "\n".join(f"    - {p}" for p in plugins)
     strategies_yaml = "\n".join(f"    - {s}" for s in strategies) if strategies else "    - basic"
     lang_line = f"\n  language: [{', '.join(languages)}]" if languages else ""
+    # `redteam.provider` is the attack generator; the redteam graders read `defaultTest.options.provider` for the
+    # judge (traced in promptfoo's graders-*.js). Both are model ids like "openai:gpt-4.1-mini".
+    generator_line = f"  provider: {generator_model}\n" if generator_model else ""
+    judge_block = f"  options:\n    provider: {judge_model}\n" if judge_model else ""
     return (
         "description: auto-generated red team run\n"
         'prompts: ["{{q}}"]\n'
         f"{_target_providers_yaml(target)}"
-        "defaultTest:\n  assert:\n    - type: python\n"
+        f"defaultTest:\n{judge_block}  assert:\n    - type: python\n"
         f"      value: file://{bridge_path}\n      config:\n        context_file: {context_file}\n"
-        f"redteam:\n  purpose: {json.dumps(purpose)}\n  numTests: {num_tests}\n"
+        f"redteam:\n{generator_line}  purpose: {json.dumps(purpose)}\n  numTests: {num_tests}\n"
         f"  plugins:\n{plugins_yaml}\n  strategies:\n{strategies_yaml}{lang_line}\n"
     )

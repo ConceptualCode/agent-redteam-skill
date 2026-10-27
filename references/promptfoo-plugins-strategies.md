@@ -50,9 +50,10 @@ don't imply uniform deterministic coverage.
 | `prompt-extraction` | System prompt disclosure |
 | `hijacking` | Unauthorized resource usage / purpose deviation |
 
-Strategies: `basic` (the plugin's own unwrapped test) plus `jailbreak` (iteratively refines the prompt with an LLM
-judge -- no remote generation needed) for a cheap first pass at whether a simple adversarial wrapper changes the
-outcome.
+Strategies: `basic` (the plugin's own unwrapped test) plus `jailbreak-templates` (fixed jailbreak wrappers, fully
+local) for a cheap first pass at whether a simple adversarial wrapper changes the outcome. The adaptive `jailbreak`
+is the stronger test but sends the agent's replies to PromptFoo's servers and needs `--remote` -- opt-in only, see
+`promptfoo-setup.md`.
 
 **`hijacking` needs PromptFoo's remote generation unconditionally** -- confirmed directly: with
 `PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true` set (`promptfoo-setup.md`'s recommended
@@ -145,8 +146,10 @@ own grader is a real model call every time), so "free" here means generation onl
 
 Static, local, free (no attacker model): `base64`, `rot13`, `leetspeak`, `hex`, `morse`, `homoglyph`, `camelcase`,
 `piglatin`, `jailbreak-templates`. Single-turn dynamic (an attacker model rewrites the prompt): `jailbreak`
-(iterative refinement, no remote call needed), `jailbreak:composite`/`jailbreak:meta`/`jailbreak:tree` (PromptFoo's
-own default strategies -- `jailbreak:composite` and `jailbreak:meta` need remote inference). Multi-turn (a full
+(an alias for `jailbreak:meta`), `jailbreak:composite`/`jailbreak:meta`/`jailbreak:tree` (PromptFoo's own default
+strategies). **`jailbreak`, `jailbreak:meta` and `jailbreak:composite` all need remote inference** -- the attacker
+reads the target's replies on PromptFoo's servers, so they are opt-in and need `--remote` (an earlier note here said
+`jailbreak` needed no remote call; a real run proved it does). Multi-turn (a full
 simulated conversation, the most expensive per test): `crescendo`, `goat`, `goblin`, `hydra`, `mischievous-user`.
 `basic` means "run the plugin's own test with no wrapper" -- always worth including as a baseline comparison point,
 since a strategy that doesn't change the outcome vs. `basic` is a weaker finding than one that does.
