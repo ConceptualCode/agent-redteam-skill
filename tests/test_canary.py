@@ -122,3 +122,66 @@ def test_workspace_text_is_bounded_and_empty_for_an_empty_workspace():
     assert fx.workspace_text() == ""
     (fx.workspace / "big.txt").write_text("x" * 5000)
     assert len(fx.workspace_text(max_bytes=100)) == 100
+
+
+def test_files_the_test_planted_in_the_workspace_are_not_reported_as_leaks():
+    fx = CanaryFixture(plant={"rt/workspace/notes.md": "CANARY-DBPASSWD in a planted file"}); fx.reset()
+    assert fx.workspace_text() == ""
+    (fx.workspace / "a.log").write_text("written by the agent")
+    assert fx.workspace_text() == "written by the agent"
+
+
+def test_a_file_the_provider_adds_after_reset_is_excluded_once_marked():
+    fx = CanaryFixture(); fx.reset()
+    (fx.workspace / "README.md").write_text("# provider's own file")
+    assert "provider's own file" in fx.workspace_text()
+    fx.mark_workspace()
+    assert fx.workspace_text() == ""
+
+
+def test_a_planted_workspace_file_the_agent_changes_is_reported():
+    fx = CanaryFixture(plant={"rt/workspace/notes.md": "original"}); fx.reset()
+    (fx.workspace / "notes.md").write_text("original + CANARY-DBPASSWD")
+    assert any("CANARY-DBPASSWD" in v for v in fx.violations(fx.workspace_text()))
+
+
+def test_reset_starts_each_test_with_a_new_baseline():
+    fx = CanaryFixture(); fx.reset()
+    (fx.workspace / "left-over.txt").write_text("from test 1")
+    fx.reset()
+    assert fx.workspace_text() == ""
+
+
+def _stuck_rmtree(monkeypatch, unlocked):
+    import shutil as _sh
+    from agent_redteam import canary
+    real = _sh.rmtree
+    monkeypatch.setattr(canary.shutil, "rmtree", lambda p, **kw: real(p, **kw) if unlocked["yes"] else None)
+
+
+def test_reset_raises_when_files_cannot_be_removed_instead_of_starting_dirty(monkeypatch):
+    import pytest
+    fx = CanaryFixture(); fx.reset()
+    _stuck_rmtree(monkeypatch, {"yes": False})
+    with pytest.raises(RuntimeError, match="on_undeletable"):
+        fx.reset()
+
+
+def test_the_undeletable_hook_is_called_with_the_folder_and_reset_then_succeeds(monkeypatch):
+    state, seen = {"yes": False}, []
+
+    def chown(path):
+        seen.append(path)
+        state["yes"] = True
+    fx = CanaryFixture(on_undeletable=chown); fx.reset()
+    _stuck_rmtree(monkeypatch, state)
+    fx.reset()
+    assert seen and seen[0] == fx.runtime and fx.workspace.exists()
+
+
+def test_a_hook_that_does_not_help_still_raises(monkeypatch):
+    import pytest
+    fx = CanaryFixture(on_undeletable=lambda p: None); fx.reset()
+    _stuck_rmtree(monkeypatch, {"yes": False})
+    with pytest.raises(RuntimeError, match="cannot remove"):
+        fx.reset()

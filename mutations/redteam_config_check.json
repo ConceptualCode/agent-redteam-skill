@@ -1,32 +1,62 @@
 [
- {
-  "find": "has_bridge_assertion=\"assert_bridge.py\" in yaml_text,",
-  "replace": "has_bridge_assertion=True,",
-  "note": "a config with no bridge wiring at all is reported as wired in anyway"
- },
- {
-  "find": "has_redteam = bool(re.search(r\"^redteam:\\s*$\", yaml_text, re.MULTILINE))",
-  "replace": "has_redteam = True",
-  "note": "pure Path B configs are reported as having a redteam section"
- },
- {
-  "find": "missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),",
-  "replace": "missing_baseline=(),",
-  "note": "a dropped baseline plugin is never flagged as missing"
- },
- {
-  "find": "if match and len(match.group(1)) > indent:",
-  "replace": "if match:",
-  "note": "a bullet at or above plugins:'s own indentation is wrongly counted as one of its items"
- },
- {
-  "find": "return 1 if not a.has_bridge_assertion else 0",
-  "replace": "return 0",
-  "note": "the command line never exits nonzero even when the deterministic bridge is completely missing"
- },
- {
-  "find": "has_canary_assertion=\"assert_canary.py\" in yaml_text,",
-  "replace": "has_canary_assertion=False,",
-  "note": "a wired-in canary assertion is not detected"
- }
+  {
+    "find": "has_bridge_assertion=\"assert_bridge.py\" in yaml_text,",
+    "replace": "has_bridge_assertion=True,",
+    "note": "a config with no bridge wiring at all is reported as wired in anyway"
+  },
+  {
+    "find": "has_redteam = bool(re.search(r\"^redteam:\\s*$\", yaml_text, re.MULTILINE))",
+    "replace": "has_redteam = True",
+    "note": "pure Path B configs are reported as having a redteam section"
+  },
+  {
+    "find": "missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),\n    )\n\n\ndef audit_all",
+    "replace": "missing_baseline=(),\n    )\n\n\ndef audit_all",
+    "note": "a dropped baseline plugin is never flagged as missing"
+  },
+  {
+    "find": "if match and len(match.group(1)) > indent:",
+    "replace": "if match:",
+    "note": "a bullet at or above plugins:'s own indentation is wrongly counted as one of its items"
+  },
+  {
+    "find": "return 1 if not a.has_bridge_assertion else 0",
+    "replace": "return 0",
+    "note": "the command line never exits nonzero even when the deterministic bridge is completely missing"
+  },
+  {
+    "find": "has_canary_assertion=\"assert_canary.py\" in yaml_text,",
+    "replace": "has_canary_assertion=False,",
+    "note": "a wired-in canary assertion is not detected"
+  },
+  {
+    "find": "has_bridge_assertion=all(a.has_bridge_assertion for a in audits),",
+    "replace": "has_bridge_assertion=any(a.has_bridge_assertion for a in audits),",
+    "note": "every config needs the bridge"
+  },
+  {
+    "find": "has_canary_assertion=all(a.has_canary_assertion for a in audits),",
+    "replace": "has_canary_assertion=any(a.has_canary_assertion for a in audits),",
+    "note": "every config needs the canary"
+  },
+  {
+    "find": "has_redteam_section=any(a.has_redteam_section for a in audits),",
+    "replace": "has_redteam_section=all(a.has_redteam_section for a in audits),",
+    "note": "a redteam section in any config counts"
+  },
+  {
+    "find": "plugins = tuple(dict.fromkeys(p for a in audits for p in a.plugins))",
+    "replace": "plugins = audits[0].plugins",
+    "note": "plugins of all configs must be combined"
+  },
+  {
+    "find": "        if not audit(t).has_bridge_assertion:\n            print(f\"{f}: no assert_bridge.py wired in\")",
+    "replace": "        pass",
+    "note": "the config without the bridge must be named"
+  },
+  {
+    "find": "missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),\n    )\n\n\ndef format_audit",
+    "replace": "missing_baseline=(),\n    )\n\n\ndef format_audit",
+    "note": "a baseline plugin missing from every config is still flagged"
+  }
 ]
