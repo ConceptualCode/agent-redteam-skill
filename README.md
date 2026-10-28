@@ -25,6 +25,10 @@ whose agent you want to test.
     git clone --depth 1 https://github.com/ConceptualCode/agent-redteam-skill /tmp/agent-redteam-skill
     mkdir -p ~/.claude/skills && cp -r /tmp/agent-redteam-skill/agent-redteam ~/.claude/skills/
 
+Then **start a new Claude Code session**: a session that is already open does not reload skills. In the new session, ask
+"which skills do you have?" and look for `agent-redteam`. A skill in `~/.claude/skills/` is not a file in your project, so
+it will not appear in the project folder.
+
 To update later, clone again and replace the folder (`rm -rf ~/.claude/skills/agent-redteam` first).
 
 Needs Python 3.10+, and Node 22.22+ for PromptFoo runs. You do not install PromptFoo: the skill installs the pinned version
