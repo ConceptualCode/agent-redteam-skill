@@ -73,6 +73,7 @@ Found this one the hard way: a real external-validation exercise ran this exact 
 from agent_redteam.redteam_config_check import audit, format_audit
 print(format_audit(audit(open("promptfooconfig.yaml").read())))
 ```
+For a run split over several config files (say local plugins and remote-generated ones), use `audit_all([text1, text2])` or pass every file to `python -m agent_redteam.redteam_config_check a.yaml b.yaml`: the baseline is judged across the files together, and the bridge counts as wired only if every file wires it.
 Reads the real file, not a description of it: whether `assert_bridge.py` is actually wired into an assertion, whether a `redteam:`/`plugins:` block exists at all, and which of the three baseline plugins (if any) are missing from it. A missing baseline plugin isn't automatically wrong -- `hijacking` genuinely needs remote generation and is fine to drop when that's off -- but the toolkit should say which ones are missing so that's a decision someone actually made, not a gap nobody checked for. Deliberately not a general YAML parser, just the shape `build_config()` itself generates.
 
 ## Secret/marker leaks have no check in this toolkit today
