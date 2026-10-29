@@ -1,27 +1,42 @@
 [
- {
-  "find": "None if t.get(\"returned\") is None else str(t.get(\"returned\"))",
-  "replace": "str(t.get(\"returned\"))",
-  "note": "a missing returned value becomes the string 'None' instead of staying unset"
- },
- {
-  "find": "bool(t.get(\"refused\", False))",
-  "replace": "bool(t.get(\"refused\", True))",
-  "note": "a tool call with no refused key defaults to refused"
- },
- {
-  "find": "replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output or \"\"),)",
-  "replace": "replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output),)",
-  "note": "a falsy output (None, empty) is stringified literally instead of becoming an empty reply"
- },
- {
-  "find": "if isinstance(t, Mapping)",
-  "replace": "if True",
-  "note": "a non-dict tool entry is no longer skipped"
- },
- {
-  "find": "return default if value is None else value",
-  "replace": "return raw.get(key, default)",
-  "note": "an explicit JSON null for forbidden_tools/allowances/arg_bounds crashes from_dict instead of being treated as absent"
- }
+  {
+    "find": "None if t.get(\"returned\") is None else str(t.get(\"returned\"))",
+    "replace": "str(t.get(\"returned\"))",
+    "note": "a missing returned value becomes the string 'None' instead of staying unset"
+  },
+  {
+    "find": "bool(t.get(\"refused\", False))",
+    "replace": "bool(t.get(\"refused\", True))",
+    "note": "a tool call with no refused key defaults to refused"
+  },
+  {
+    "find": "replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output or \"\"),)",
+    "replace": "replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output),)",
+    "note": "a falsy output (None, empty) is stringified literally instead of becoming an empty reply"
+  },
+  {
+    "find": "if isinstance(t, Mapping)",
+    "replace": "if True",
+    "note": "a non-dict tool entry is no longer skipped"
+  },
+  {
+    "find": "return default if value is None else value",
+    "replace": "return raw.get(key, default)",
+    "note": "an explicit JSON null for forbidden_tools/allowances/arg_bounds crashes from_dict instead of being treated as absent"
+  },
+  {
+    "find": "            if isinstance(value, (str, bytes)):",
+    "replace": "            if False:",
+    "note": "a string where a list belongs must be refused"
+  },
+  {
+    "find": "int(or_default(\"max_reply_chars\", 3000))",
+    "replace": "int(raw.get(\"max_reply_chars\", 3000))",
+    "note": "a null max_reply_chars must mean the default"
+  },
+  {
+    "find": "int(or_default(\"max_tool_calls\", 10))",
+    "replace": "int(raw.get(\"max_tool_calls\", 10))",
+    "note": "a null max_tool_calls must mean the default"
+  }
 ]

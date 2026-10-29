@@ -44,6 +44,12 @@ REMOTE_REPLY_STRATEGIES: frozenset[str] = frozenset({
 })
 
 
+# Attacker-model strategies that run locally when remote generation is disabled but take PromptFoo's remote path whenever
+# it is enabled (seen in the installed PromptFoo's strategy code: they branch on `shouldGenerateRemote()`). Approving remote
+# generation for some plugins therefore also lets these send replies off the machine.
+REMOTE_WHEN_ENABLED: frozenset[str] = frozenset({"crescendo", "goat", "jailbreak:tree"})
+
+
 def strategies_sending_replies_remote(strategies: list[str]) -> list[str]:
     """The chosen strategies that send the target's replies to PromptFoo's servers. Non-empty means the developer
     must be told, and must agree, before a run -- this goes beyond the target description + plugin config that
@@ -51,40 +57,45 @@ def strategies_sending_replies_remote(strategies: list[str]) -> list[str]:
     return [s for s in strategies if s in REMOTE_REPLY_STRATEGIES]
 
 
-def _check_replies_approved(strategies: list[str], remote_replies_approved: bool) -> list[str]:
+def _check_replies_approved(strategies: list[str], remote_replies_approved: bool, remote_generation_enabled: bool = False) -> list[str]:
+    """The strategies that need `--remote`. Raises if any strategy that sends replies off the machine is chosen without
+    approval; with `remote_generation_enabled` that also covers the ones that only go remote when it is on."""
     needs = strategies_sending_replies_remote(strategies)
-    if needs and not remote_replies_approved:
-        raise ValueError(f"{needs} send the agent's replies to PromptFoo's servers; get the developer's explicit "
+    maybe = [s for s in strategies if remote_generation_enabled and s in REMOTE_WHEN_ENABLED]
+    if (needs or maybe) and not remote_replies_approved:
+        raise ValueError(f"{needs + maybe} send the agent's replies to PromptFoo's servers; get the developer's explicit "
                          "approval first, or use a local strategy such as jailbreak-templates")
     return needs
 
 
 def redteam_run_args(config_path: str, strategies: list[str], remote_replies_approved: bool,
-                     promptfoo: str = "promptfoo") -> list[str]:
+                     promptfoo: str = "promptfoo", remote_generation_enabled: bool = False) -> list[str]:
     """argv for `promptfoo redteam run` (generate and evaluate in one go). Adds `--remote` only if the developer
     explicitly approved replies leaving the machine AND an adaptive strategy is actually chosen; raises if one is
     chosen without approval, rather than letting the run fail halfway (after generation has already spent money)
-    or silently dropping the strategy. `promptfoo` is the binary to run: pass the project's own install path."""
-    needs = _check_replies_approved(strategies, remote_replies_approved)
+    or silently dropping the strategy. `promptfoo` is the binary to run: pass the project's own install path.
+    `remote_generation_enabled` is True when remote generation was approved for any plugin of this run."""
+    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)
     args = [promptfoo, "redteam", "run", "-c", config_path, "--force", "--no-cache", "-j", "1"]
     return args + (["--remote"] if needs else [])
 
 
 def redteam_generate_args(config_path: str, output_path: str, strategies: list[str], remote_replies_approved: bool,
-                          promptfoo: str = "promptfoo") -> list[str]:
+                          promptfoo: str = "promptfoo", remote_generation_enabled: bool = False) -> list[str]:
     """argv for `promptfoo redteam generate`: writes the attack prompts to `output_path` and runs nothing, so the
     developer can read what they name and plant it before anything is sent to the agent. Evaluate the file with
     `redteam_eval_args`. Same approval rule for `--remote` as `redteam_run_args`."""
-    needs = _check_replies_approved(strategies, remote_replies_approved)
+    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)
     args = [promptfoo, "redteam", "generate", "-c", config_path, "-o", output_path, "--force", "--no-cache"]
     return args + (["--remote"] if needs else [])
 
 
 def redteam_eval_args(generated_path: str, strategies: list[str], remote_replies_approved: bool,
-                      output_path: str | None = None, promptfoo: str = "promptfoo") -> list[str]:
+                      output_path: str | None = None, promptfoo: str = "promptfoo",
+                      remote_generation_enabled: bool = False) -> list[str]:
     """argv for `promptfoo redteam eval` on a file `redteam_generate_args` wrote. One test at a time (`-j 1`) because a
     provider sharing one fixture, container or workspace is corrupted by concurrent tests."""
-    needs = _check_replies_approved(strategies, remote_replies_approved)
+    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)
     args = [promptfoo, "redteam", "eval", "-c", generated_path, "--no-cache", "-j", "1"]
     if output_path:
         args += ["-o", output_path]
@@ -133,10 +144,10 @@ def estimate_test_count(num_tests: int, plugins: list[str], strategies: list[str
 
 def _target_providers_yaml(target: Target) -> str:
     if target.kind == "python":
-        return f"providers:\n  - id: file://{target.value}\n"
+        return f"providers:\n  - id: {json.dumps('file://' + target.value)}\n"
     return (
         "providers:\n  - id: https\n    config:\n"
-        f"      url: {target.value}\n      method: POST\n      headers:\n        Content-Type: application/json\n"
+        f"      url: {json.dumps(target.value)}\n      method: POST\n      headers:\n        Content-Type: application/json\n"
         '      body:\n        q: "{{q}}"\n'
         '      transformResponse: "(json) => ({ output: json.output, metadata: json.metadata })"\n'
     )
@@ -182,13 +193,13 @@ def build_config(target: Target, context_file: str, plugins: list[str], strategi
     # judge (traced in promptfoo's graders-*.js). Both are model ids like "openai:gpt-4.1-mini".
     generator_line = f"  provider: {generator_model}\n" if generator_model else ""
     judge_block = f"  options:\n    provider: {judge_model}\n" if judge_model else ""
-    canary_block = f"    - type: python\n      value: file://{canary_path}\n" if canary_path else ""
+    canary_block = f"    - type: python\n      value: {json.dumps('file://' + canary_path)}\n" if canary_path else ""
     return (
         "description: auto-generated red team run\n"
         'prompts: ["{{q}}"]\n'
         f"{_target_providers_yaml(target)}"
         f"defaultTest:\n{judge_block}  assert:\n    - type: python\n"
-        f"      value: file://{bridge_path}\n      config:\n        context_file: {context_file}\n"
+        f"      value: {json.dumps('file://' + bridge_path)}\n      config:\n        context_file: {json.dumps(context_file)}\n"
         f"{canary_block}"
         f"redteam:\n{generator_line}  purpose: {json.dumps(purpose)}\n  numTests: {num_tests}\n"
         f"  plugins:\n{plugins_yaml}\n  strategies:\n{strategies_yaml}{lang_line}\n"

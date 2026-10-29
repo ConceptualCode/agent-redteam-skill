@@ -7,7 +7,7 @@ KEY = "sk-test-0123456789abcdef"
 
 
 def test_files_holding_the_value_are_listed_and_others_are_not(tmp_path):
-    (tmp_path / "a.json").write_text('{"out": "OPENAI_API_KEY=%s"}' % KEY)
+    (tmp_path / "a.json").write_text(f'{{"out": "OPENAI_API_KEY={KEY}"}}')
     (tmp_path / "b.json").write_text("nothing here")
     got = find_secret_files([tmp_path], ["K"], env={"K": KEY})
     assert got == {"K": [str(tmp_path / "a.json")]}
@@ -41,14 +41,30 @@ def test_main_exits_1_and_never_prints_the_value(tmp_path, monkeypatch, capsys):
     assert str(f) in out and KEY not in out
 
 
-def test_main_exits_0_when_clean_and_says_when_a_variable_was_not_checked(tmp_path, monkeypatch, capsys):
+def test_main_exits_0_only_when_every_named_variable_was_searched_for_and_not_found(tmp_path, monkeypatch, capsys):
+    (tmp_path / "r.json").write_text("clean")
+    monkeypatch.setenv("RT_K", KEY)
+    monkeypatch.setattr("sys.argv", ["x", "--env", "RT_K", str(tmp_path)])
+    assert secret_scan.main() == 0
+    assert "RT_K: not found" in capsys.readouterr().out
+
+
+def test_a_variable_that_was_not_set_means_nothing_was_checked_so_exit_2_not_0(tmp_path, monkeypatch, capsys):
     (tmp_path / "r.json").write_text("clean")
     monkeypatch.setenv("RT_K", KEY)
     monkeypatch.delenv("RT_UNSET", raising=False)
     monkeypatch.setattr("sys.argv", ["x", "--env", "RT_K", "--env", "RT_UNSET", str(tmp_path)])
-    assert secret_scan.main() == 0
+    assert secret_scan.main() == 2
     out = capsys.readouterr().out
     assert "RT_K: not found" in out and "RT_UNSET: not set" in out and "NOT checked" in out
+
+
+def test_a_found_secret_is_exit_1_even_when_another_variable_was_unset(tmp_path, monkeypatch):
+    (tmp_path / "r.json").write_text(KEY)
+    monkeypatch.setenv("RT_K", KEY)
+    monkeypatch.delenv("RT_UNSET", raising=False)
+    monkeypatch.setattr("sys.argv", ["x", "--env", "RT_K", "--env", "RT_UNSET", str(tmp_path)])
+    assert secret_scan.main() == 1
 
 
 def test_an_unreadable_file_does_not_abort_the_scan(tmp_path, monkeypatch):

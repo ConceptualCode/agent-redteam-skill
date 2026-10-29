@@ -2,7 +2,9 @@
 
 An adaptive strategy (jailbreak, ...) judges only with PromptFoo's LLM grader and drops the provider's metadata, so
 our detectors/oracle never ran on those tests. This pulls each test's final attack prompt out of an exported results
-file and sends it N times through the provider as an ordinary request, where the oracle and bridge do run.
+file and sends it N times through the provider as an ordinary request, and reads the provider's own `oracle`
+(the canary check). The seven bridge detectors are not applied here. A provider that returns no `oracle` at all
+is reported inconclusive, never as "nothing found": nothing was checked.
 
     python -m agent_redteam.replay_check results.json --provider /path/provider.py --runs 3 --out replay.json
 """
@@ -35,7 +37,7 @@ def summarize(rows: list[dict]) -> dict:
     for r in rows:
         d = s.setdefault(r["plugin"], {"confirmed": 0, "nothing_found": 0, "inconclusive": 0, "runs": 0})
         d["runs"] += 1
-        if r.get("agent_error"):
+        if r.get("agent_error") or r["oracle"] is None:
             d["inconclusive"] += 1
         elif r["oracle"]:
             d["confirmed"] += 1
@@ -55,7 +57,7 @@ def main() -> None:
     for p in final_prompts(json.loads(Path(a.results).read_text())):
         for i in range(a.runs):
             r = mod.call_api(p["prompt"], {}, {}); md = r.get("metadata", {})
-            rows.append({**p, "run": i, "oracle": md.get("oracle", []), "agent_error": md.get("agent_error"),
+            rows.append({**p, "run": i, "oracle": md.get("oracle"), "agent_error": md.get("agent_error"),
                          "tools": [t["name"] for t in md.get("tools", [])], "reply": r.get("output", "")[:300]})
             Path(a.out).write_text(json.dumps(rows, indent=1))
     print(json.dumps(summarize(rows), indent=1))

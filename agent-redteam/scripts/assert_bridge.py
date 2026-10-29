@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_redteam.bridge import grade  # noqa: E402
+from agent_redteam.bridge import grade
 
 
 def get_assert(output, context):

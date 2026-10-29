@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 DEFAULT_PATH = Path(__file__).with_name("promptfoo_catalog.json")
 
@@ -29,7 +29,7 @@ class Catalog:
     remote_generation_plugins: tuple[str, ...] | None = None
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> "Catalog":
+    def load(cls, path: str | Path | None = None) -> Catalog:
         data = json.loads(Path(path or DEFAULT_PATH).read_text())
         return cls(data["captured_at"], data["promptfoo_version"], dict(data["plugins"]),
                   tuple(data["default_plugins"]), tuple(data["strategy_ids"]), tuple(data["default_strategies"]),

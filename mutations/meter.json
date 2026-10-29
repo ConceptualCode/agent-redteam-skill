@@ -40,8 +40,8 @@
     "note": "unpriced models accepted"
   },
   {
-    "find": "except OSError as exc:",
-    "replace": "except ZeroDivisionError as exc:",
+    "find": "        except (OSError, http.client.HTTPException) as exc:",
+    "replace": "        except ZeroDivisionError as exc:",
     "note": "upstream failures not handled"
   },
   {
@@ -113,5 +113,25 @@
     "find": "        if not key:\n            print(f\"{args.key_env} is not set in this shell\", file=sys.stderr)\n            return 1",
     "replace": "        if not key:\n            print(f\"{args.key_env} is not set in this shell\", file=sys.stderr)\n            return 0",
     "note": "a missing key variable must stop the meter from starting"
+  },
+  {
+    "find": "            if not isinstance(parsed, dict) or not parsed.get(\"usage\"):\n                raise KeyError(\"usage\")",
+    "replace": "            pass",
+    "note": "a 200 without usage must be shown as unpriced"
+  },
+  {
+    "find": "        except (ValueError, KeyError, AttributeError, TypeError):",
+    "replace": "        except (ValueError, KeyError):",
+    "note": "a malformed usage body must not drop the connection"
+  },
+  {
+    "find": "            self.state[\"unpriced\"] += unpriced",
+    "replace": "            self.state[\"unpriced\"] += 0",
+    "note": "unpriced calls must be counted"
+  },
+  {
+    "find": "        except (OSError, http.client.HTTPException) as exc:",
+    "replace": "        except OSError as exc:",
+    "note": "a cut-off response is an upstream error"
   }
 ]

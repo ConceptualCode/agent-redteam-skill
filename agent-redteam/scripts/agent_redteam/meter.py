@@ -16,6 +16,7 @@ upstream may still be billed; it is logged.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import sys
@@ -23,9 +24,9 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Callable
 
 from .pricing import Prices
 
@@ -84,7 +85,7 @@ class Meter:
         self.budget, self.prices, self.upstream = budget, prices, upstream.rstrip("/")
         self.log_path, self.log_bodies, self.forward = Path(log_path) if log_path else None, log_bodies, forward
         self._upstream_key = upstream_key   # {header: value} that replaces the caller's auth; never logged
-        self.state = {"spent": 0.0, "calls": 0, "refused": 0, "upstream_errors": 0, "by_model": {}}
+        self.state = {"spent": 0.0, "calls": 0, "refused": 0, "upstream_errors": 0, "unpriced": 0, "by_model": {}}
         self._lock = threading.Lock()
 
     def summary(self) -> dict:
@@ -131,7 +132,7 @@ class Meter:
             sent.update(self._upstream_key)
         try:
             status, resp_headers, resp_body = self.forward(method, self.upstream + path, sent, body)
-        except OSError as exc:  # a timed-out call may still be billed upstream, so it is counted and logged
+        except (OSError, http.client.HTTPException) as exc:  # a timed-out or cut-off call may still be billed upstream, so it is counted and logged
             with self._lock:
                 self.state["upstream_errors"] += 1
             self._log({"t": round(started, 3), "path": path, "model": model, "error": type(exc).__name__, "note": "not priced; may be billed"})
@@ -143,19 +144,27 @@ class Meter:
     def _record(self, path: str, model: str, payload: dict, resp_body: bytes, started: float) -> None:
         try:
             parsed = json.loads(resp_body)
+            if not isinstance(parsed, dict) or not parsed.get("usage"):
+                raise KeyError("usage")
             fresh, cached, cache_write, completion = usage_of(parsed, self.prices.shape(model))
             cost = self.prices.cost_usd(model, fresh, cached, cache_write, completion)
-        except (ValueError, KeyError):
-            parsed, fresh, cached, cache_write, completion, cost = {}, 0, 0, 0, 0, 0.0
+            unpriced = False
+        except (ValueError, KeyError, AttributeError, TypeError):
+            # A 200 whose usage cannot be read is still billed upstream. It is counted as free here, so it is counted
+            # and shown (`unpriced` in /_meter and the log) rather than hidden: the cap undercounts by exactly these.
+            parsed, fresh, cached, cache_write, completion, cost, unpriced = {}, 0, 0, 0, 0, 0.0, True
         with self._lock:
             self.state["spent"] += cost
             self.state["calls"] += 1
+            self.state["unpriced"] += unpriced
             family = self.prices.base_model(model)
             self.state["by_model"][family] = round(self.state["by_model"].get(family, 0) + cost, 6)
             total = self.state["spent"]
         entry = {"t": round(started, 3), "path": path, "model": model, "input": fresh, "cached": cached,
                  "cache_write": cache_write, "output": completion, "cost": round(cost, 6), "total": round(total, 6),
                  "ms": int((time.time() - started) * 1000)}
+        if unpriced:
+            entry["note"] = "usage could not be read; counted as $0 but billed upstream"
         if self.log_bodies:
             entry["request"], entry["response"] = payload, parsed
         self._log(entry)

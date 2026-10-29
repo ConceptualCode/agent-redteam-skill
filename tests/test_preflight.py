@@ -38,7 +38,8 @@ def test_the_key_value_never_appears_in_any_output():
 
 def test_python_and_node_version_boundaries():
     assert checks(python_version=(3, 8))["python"].status == "fail"
-    assert checks(python_version=(3, 9))["python"].status == "ok"
+    assert checks(python_version=(3, 9))["python"].status == "fail"       # CI tests 3.10 and newer
+    assert checks(python_version=(3, 10))["python"].status == "ok"
     assert checks(run=lambda c: "v22.22.0")["node"].status == "ok"
     assert checks(run=lambda c: "v22.21.9", promptfoo=True)["node"].status == "fail"
     assert checks(run=lambda c: "v20.19.5")["node"].status == "warn"      # fine unless PromptFoo is wanted
@@ -148,3 +149,35 @@ def test_a_missing_or_stopped_docker_fails_with_a_fix_that_says_to_recheck():
     for runner in (stopped, missing):
         c = checks(docker=True, run=runner)["docker"]
         assert c.status == "fail" and "right before building the provider" in c.fix
+
+
+def test_the_meter_route_check_parses_the_url_instead_of_matching_a_prefix():
+    def routed(url, port=8787):
+        env = {**GOOD_ENV, "OPENAI_BASE_URL": url}
+        return checks(env=env, meter_port=port)["calls go through the meter"].status
+    assert routed("http://127.0.0.1:8787/v1") == "ok" and routed("http://localhost:8787/v1") == "ok"
+    assert routed("http://127.0.0.1:9100/v1", port=9100) == "ok"
+    for bad in ("http://localhost.evil.test:8787/v1", "http://127.0.0.1.attacker.net:8787/v1", "http://127.0.0.1:9999/v1",
+                "http://127.0.0.1/v1", "https://127.0.0.1:8787/v1", "http://[abc", ""):
+        assert routed(bad) == "warn", bad
+
+
+def test_the_meter_probe_ignores_proxy_settings(monkeypatch):
+    from agent_redteam import preflight
+    seen = {}
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b"{}"
+
+    class Opener:
+        def open(self, url, timeout=None): return Resp()
+
+    def build_opener(*handlers):
+        seen["handlers"] = handlers
+        return Opener()
+    monkeypatch.setenv("HTTP_PROXY", "http://proxy.invalid:3128")   # set, as on a corporate machine
+    monkeypatch.setattr(preflight.urllib.request, "build_opener", build_opener)
+    assert preflight._http_get("http://127.0.0.1:8787/_meter") == "{}"
+    assert seen["handlers"][0].proxies == {}

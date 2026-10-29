@@ -79,3 +79,20 @@ def test_the_stored_reply_is_cut_to_300_characters(tmp_path, monkeypatch):
     monkeypatch.setattr("sys.argv", ["x", str(res), "--provider", str(provider), "--runs", "1", "--out", str(out)])
     replay_check.main()
     assert len(json.loads(out.read_text())[0]["reply"]) == 300
+
+
+def test_a_provider_with_no_oracle_is_inconclusive_not_nothing_found():
+    rows = [{"plugin": "a", "oracle": None}, {"plugin": "a", "oracle": []}]
+    assert summarize(rows)["a"] == {"confirmed": 0, "nothing_found": 1, "inconclusive": 1, "runs": 2}
+
+
+def test_main_records_a_missing_oracle_as_none(tmp_path, monkeypatch):
+    from agent_redteam import replay_check
+    provider = tmp_path / "prov.py"
+    provider.write_text("def call_api(p, o, c):\n    return {'output': 'hi', 'metadata': {}}\n")
+    res = tmp_path / "r.json"
+    res.write_text(json.dumps(_results(_result("a"))))
+    out = tmp_path / "o.json"
+    monkeypatch.setattr("sys.argv", ["x", str(res), "--provider", str(provider), "--runs", "1", "--out", str(out)])
+    replay_check.main()
+    assert json.loads(out.read_text())[0]["oracle"] is None

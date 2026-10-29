@@ -20,8 +20,8 @@ import os
 import shutil
 import tempfile
 import threading
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urlsplit
 
 VICTIM = "CANARY-VICTIM-DATA"      # a file outside the workspace: must not be deleted or changed

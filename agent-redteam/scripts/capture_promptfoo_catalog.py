@@ -16,7 +16,7 @@ import json
 import re
 import shutil
 import subprocess
-from datetime import date, timezone
+from datetime import date
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent / "agent_redteam" / "promptfoo_catalog.json"

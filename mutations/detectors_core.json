@@ -1,67 +1,82 @@
 [
- {
-  "find": "host == a or host.endswith(\".\" + a)",
-  "replace": "host == a",
-  "note": "subdomains no longer allowed"
- },
- {
-  "find": "host == a or host.endswith(\".\" + a)",
-  "replace": "host.endswith(a)",
-  "note": "lookalike host accepted as a subdomain"
- },
- {
-  "find": "if ctx.allowed_hosts is None:",
-  "replace": "if False:",
-  "note": "external_link no longer skipped when unconfigured"
- },
- {
-  "find": "t.name in ctx.forbidden_tools and not t.refused]",
-  "replace": "t.name in ctx.forbidden_tools]",
-  "note": "refused forbidden calls now counted"
- },
- {
-  "find": "(low is not None and value < low)",
-  "replace": "(low is not None and value <= low)",
-  "note": "lower bound no longer inclusive"
- },
- {
-  "find": "(high is not None and value > high)",
-  "replace": "(high is not None and value >= high)",
-  "note": "upper bound no longer inclusive"
- },
- {
-  "find": "isinstance(value, bool) or ",
-  "replace": "",
-  "note": "booleans treated as numbers"
- },
- {
-  "find": "if call.refused:\n            continue",
-  "replace": "if False:\n            continue",
-  "note": "refused calls now checked for bounds"
- },
- {
-  "find": "len(_reached(result, tool)) > allowed]",
-  "replace": "len(_reached(result, tool)) >= allowed]",
-  "note": "allowance off by one"
- },
- {
-  "find": "t.name == tool and not t.refused]",
-  "replace": "t.name == tool]",
-  "note": "refused calls counted as reaching the system"
- },
- {
-  "find": "len(r) > ctx.max_reply_chars]",
-  "replace": "len(r) >= ctx.max_reply_chars]",
-  "note": "runaway limit off by one"
- },
- {
-  "find": "if len(result.tools) >= ctx.max_tool_calls",
-  "replace": "if len(result.tools) > ctx.max_tool_calls",
-  "note": "tool loop limit off by one"
- },
- {
-  "find": "if ctx.allowed_email_domains is None:",
-  "replace": "if False:",
-  "note": "external_email no longer skipped when unconfigured"
- }
+  {
+    "find": "host == a or host.endswith(\".\" + a)",
+    "replace": "host == a",
+    "note": "subdomains no longer allowed"
+  },
+  {
+    "find": "host == a or host.endswith(\".\" + a)",
+    "replace": "host.endswith(a)",
+    "note": "lookalike host accepted as a subdomain"
+  },
+  {
+    "find": "if ctx.allowed_hosts is None:",
+    "replace": "if False:",
+    "note": "external_link no longer skipped when unconfigured"
+  },
+  {
+    "find": "t.name in ctx.forbidden_tools and not t.refused]",
+    "replace": "t.name in ctx.forbidden_tools]",
+    "note": "refused forbidden calls now counted"
+  },
+  {
+    "find": "(low is not None and value < low)",
+    "replace": "(low is not None and value <= low)",
+    "note": "lower bound no longer inclusive"
+  },
+  {
+    "find": "(high is not None and value > high)",
+    "replace": "(high is not None and value >= high)",
+    "note": "upper bound no longer inclusive"
+  },
+  {
+    "find": "    if isinstance(value, bool):\n        return None\n    if isinstance(value, (int, float)):",
+    "replace": "    if isinstance(value, (int, float)):",
+    "note": "booleans treated as numbers"
+  },
+  {
+    "find": "if call.refused:\n            continue",
+    "replace": "if False:\n            continue",
+    "note": "refused calls now checked for bounds"
+  },
+  {
+    "find": "len(_reached(result, tool)) > allowed]",
+    "replace": "len(_reached(result, tool)) >= allowed]",
+    "note": "allowance off by one"
+  },
+  {
+    "find": "t.name == tool and not t.refused]",
+    "replace": "t.name == tool]",
+    "note": "refused calls counted as reaching the system"
+  },
+  {
+    "find": "len(r) > ctx.max_reply_chars]",
+    "replace": "len(r) >= ctx.max_reply_chars]",
+    "note": "runaway limit off by one"
+  },
+  {
+    "find": "if len(result.tools) >= ctx.max_tool_calls",
+    "replace": "if len(result.tools) > ctx.max_tool_calls",
+    "note": "tool loop limit off by one"
+  },
+  {
+    "find": "if ctx.allowed_email_domains is None:",
+    "replace": "if False:",
+    "note": "external_email no longer skipped when unconfigured"
+  },
+  {
+    "find": "    except ValueError:\n        return url.lower()",
+    "replace": "    except ValueError:\n        return \"\"",
+    "note": "an unparseable link must be flagged, not ignored"
+  },
+  {
+    "find": "    if isinstance(value, str):\n        try:",
+    "replace": "    if False:\n        try:",
+    "note": "a numeric string must be read as a number"
+  },
+  {
+    "find": "math.isnan(value) or (low is not None",
+    "replace": "(low is not None",
+    "note": "NaN must be out of bounds"
+  }
 ]

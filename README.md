@@ -68,6 +68,7 @@ Expect the PromptFoo install to take a few minutes the first time, and runs to c
 | `bridge.py`, `../assert_bridge.py` | one PromptFoo assertion that runs every universal detector |
 | `meter.py`, `pricing.py`, `prices.json` | a local proxy with a hard dollar cap (standard library only), OpenAI- or Anthropic-shaped (`--upstream` picks the provider, `prices.json`'s `shape` per model picks how its usage response is parsed); update `prices.json` when prices change; `--key-env` makes it hold your real key so the agent under test only gets a throwaway token |
 | `secret_scan.py` | looks for the value of your API key (never printing it) in a results folder before you keep or share it |
+| `setup_promptfoo.py` | installs the pinned PromptFoo into a private `.agent-redteam/` folder in the project being tested (never installs Node) |
 | `preflight.py` | checks before spending: tools, key present (never printed), calls routed through the meter, generation kept local |
 | `estimate.py` | a cost preview; use `--meter-log` after a smoke test for real numbers |
 | `shape_check.py` | compares a fake record with real samples (invented, missing, wrongly typed fields) |
@@ -108,8 +109,10 @@ The runners that prove them live in `demo/*/run.py` and share `tools/e2e/harness
     npm install                      # Node 22.22+; a dev copy of the pinned PromptFoo for the demos
 
 ### Before every commit
-Changes reach `main` through a pull request whose `pytest` checks (Python 3.10, 3.12, 3.14) pass; direct pushes are blocked. See `CONTRIBUTING.md`.
+Changes reach `main` through a pull request. CI runs lint, the tests on Python 3.10, 3.12 and 3.14, the mutation check and the demos; direct pushes are blocked. See `CONTRIBUTING.md`.
 
+    .venv/bin/pip install ruff pytest
+    .venv/bin/ruff check .                          # lint (config in ruff.toml)
     .venv/bin/python -m pytest                      # unit tests, including the skill-format rules
     .venv/bin/python tools/mutation_all.py          # must say "all mutations caught"
     for d in shop email file notes shop_http; do .venv/bin/python demo/$d/run.py node_modules/.bin/promptfoo; done

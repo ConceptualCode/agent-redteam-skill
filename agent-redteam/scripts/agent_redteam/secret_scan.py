@@ -4,14 +4,15 @@
 
 An agent with a shell can print its environment, and whatever it prints is saved in the results, the PromptFoo database
 and its cache. This looks for the *value* of each named environment variable in every file under the given paths and
-prints which files hold it. It never prints the value. Exit code 1 if any file holds one, so a run can be gated on it.
+prints which files hold it. It never prints the value. Exit code 1 if any file holds one, 2 if a named variable was not
+set (nothing was checked for it), 0 only if every named variable was searched for and not found, so a run can be gated on it.
 """
 from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 MIN_LENGTH = 8   # a shorter value ("true", "1") would match everywhere and say nothing
 
@@ -50,7 +51,7 @@ def main() -> int:
                 print(f"  {f}")
         else:
             print(f"{name}: not found in the scanned files")
-    return 1 if found else 0
+    return 1 if found else (2 if skipped else 0)
 
 
 if __name__ == "__main__":

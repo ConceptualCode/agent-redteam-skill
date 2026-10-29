@@ -4,10 +4,9 @@ Changes to `main` go through a pull request. Direct pushes are blocked, for ever
 
 ## Flow
 1. Branch from `main` and make the change.
-2. Run the checks locally (see "Before every commit" in the README): `pytest`, `tools/mutation_all.py` (must say
-   "all mutations caught") and the demos.
-3. Open a pull request. The `pytest` checks on Python 3.10, 3.12 and 3.14 must pass, and the branch must be up to date
-   with `main`, before it can be merged.
+2. Run the checks locally (see "Before every commit" in the README): `ruff check .`, `pytest`, `tools/mutation_all.py` (must say
+   "all mutations caught") and the demos. CI runs the same four.
+3. Open a pull request. The CI checks must pass, and the branch must be up to date with `main`, before it can be merged.
 4. Keep commit messages short and plain.
 
 ## Changing the skill

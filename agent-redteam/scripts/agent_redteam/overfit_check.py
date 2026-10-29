@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def ngrams(text: str, n: int = 4) -> set[str]:

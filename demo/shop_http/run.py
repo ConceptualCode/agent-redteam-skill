@@ -19,8 +19,8 @@ TEMPLATES = HERE.parents[1] / "agent-redteam" / "templates"
 sys.path.insert(0, str(HERE.parents[1] / "tools" / "e2e"))
 sys.path.insert(0, str(HERE.parents[0] / "shop"))
 
-from harness import report, run_promptfoo_check_http  # noqa: E402
-from run import EXPECTED  # demo/shop/run.py's own expectations -- not redefined here  # noqa: E402
+from harness import report, run_promptfoo_check_http
+from run import EXPECTED  # demo/shop/run.py's own expectations -- not redefined here
 
 PORT = 8799
 

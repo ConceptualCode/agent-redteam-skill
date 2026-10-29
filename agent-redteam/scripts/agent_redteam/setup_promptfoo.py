@@ -13,8 +13,8 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from .preflight import MIN_NODE, _node_version, _run
 

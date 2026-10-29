@@ -235,3 +235,26 @@ def test_main_refuses_to_start_when_the_key_variable_is_not_set(monkeypatch, cap
     monkeypatch.setattr("sys.argv", ["x", "--budget", "1", "--key-env", "RT_TEST_KEY"])
     assert meter_mod.main() == 1
     assert "RT_TEST_KEY is not set" in capsys.readouterr().err
+
+
+def test_a_200_whose_usage_cannot_be_read_is_counted_and_shown_not_hidden(tmp_path):
+    log = tmp_path / "spend.jsonl"
+    for body in (b'{"ok": true}', b"not json", b"[1, 2]", b'{"usage": {"prompt_tokens": null, "completion_tokens": 1}}'):
+        m, _ = meter(up=Upstream(body=body), log_path=log)
+        assert post(m)[0] == 200
+        s = m.summary()
+        assert s["calls"] == 1 and s["spent"] == 0 and s["unpriced"] == 1
+    assert "billed upstream" in log.read_text()
+
+
+def test_a_priced_response_is_not_marked_unpriced():
+    m, _ = meter()
+    post(m)
+    assert m.summary()["unpriced"] == 0
+
+
+def test_a_cut_off_upstream_response_is_an_upstream_error_not_a_dropped_connection():
+    import http.client
+    m, _ = meter(up=Upstream(error=http.client.IncompleteRead(b"partial")))
+    status, _, body = post(m)
+    assert status == 502 and m.summary()["upstream_errors"] == 1

@@ -115,7 +115,7 @@ def main() -> int:
     ap.add_argument("config_file", nargs="+", help="one or more config files of the same run, checked together")
     args = ap.parse_args()
     texts = [Path(f).read_text() for f in args.config_file]
-    for f, t in zip(args.config_file, texts):
+    for f, t in zip(args.config_file, texts, strict=True):
         if not audit(t).has_bridge_assertion:
             print(f"{f}: no assert_bridge.py wired in")
     a = audit_all(texts)
