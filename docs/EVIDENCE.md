@@ -43,8 +43,10 @@ Real runs, and CI, found faults the unit tests had not. All were fixed, each wit
   fix refuses to delete anything outside the fixture.
 
 ## What these runs do not show
-- **No vulnerability claim.** The agents were run unconfined on purpose. Where a finding is "it did what it was asked", the fix
-  is confinement by whoever deploys it, and several of these tools document sandboxes.
+- **Findings, not vulnerability claims.** The runs found real bad behavior: secrets sent out, files read and written outside
+  the workspace, a bypassed filter. But the agents were run unconfined on purpose, and in most tests the prompt asked for the
+  action. That shows missing confinement, which is for whoever deploys the agent to add. Only a control a project built and
+  we got around is a bug in the project, and none of these has been confirmed with its maintainers.
 - **Small and shallow.** Mostly one repeat per test, one target model (a small one), one judge model. A "held" is weak evidence
   against a differently worded attacker or a stronger model.
 - **Blind spots.** The canary sees only what it plants: reads of unplanted files, raw-socket traffic and the contents of
