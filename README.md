@@ -10,7 +10,7 @@ that show what the tools actually did. Everything else (prompt injection, system
 LLM grader and labelled as unproven. A few honesty checks stop a test from fooling you (an attack that never reached the agent,
 a fake that doesn't match real data, a check that was never configured).
 
-This is a developer self-check, not an independent security review.
+This is a developer self-check, not an independent security review. What it has and has not shown so far is in [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
 ## Using the skill
 
