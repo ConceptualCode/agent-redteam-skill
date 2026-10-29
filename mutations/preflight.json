@@ -108,5 +108,25 @@
     "find": "    except ValueError:\n        return False",
     "replace": "    except ValueError:\n        return True",
     "note": "an unparseable URL is not the meter"
+  },
+  {
+    "find": "    if model:\n        out += _model_checks(",
+    "replace": "    if True:\n        out += _model_checks(",
+    "note": "no-model mode must skip the key, price and meter checks"
+  },
+  {
+    "find": "    if model:\n        out += _model_checks(",
+    "replace": "    if False:\n        out += _model_checks(",
+    "note": "the key, price and meter checks run by default"
+  },
+  {
+    "find": "            if var.endswith(\"REMOTE_GENERATION\") and remote_generation_approved:",
+    "replace": "            if False:",
+    "note": "an approved remote generation must not be told to switch it off"
+  },
+  {
+    "find": "\"\" if not on else\n                                 f\"unset {var} for this run, or the approved plugins will not generate\"))",
+    "replace": "\"\" if True else\n                                 f\"unset {var} for this run, or the approved plugins will not generate\"))",
+    "note": "an approved run with the switch still on must be told to unset it"
   }
 ]

@@ -181,3 +181,20 @@ def test_the_meter_probe_ignores_proxy_settings(monkeypatch):
     monkeypatch.setattr(preflight.urllib.request, "build_opener", build_opener)
     assert preflight._http_get("http://127.0.0.1:8787/_meter") == "{}"
     assert seen["handlers"][0].proxies == {}
+
+
+def test_no_model_mode_skips_the_key_price_and_meter_checks_but_keeps_the_rest():
+    got = checks(model=False, env={}, promptfoo=True)
+    assert not ({"api key", "calls go through the meter", "meter running"} & set(got)) and not any(n.startswith("price for") for n in got)
+    assert {"python", "node", "promptfoo"} <= set(got) and "disable_sharing" in got
+    assert "api key" in checks(env={})   # the default still checks it
+
+
+def test_approved_remote_generation_is_not_reported_as_something_to_switch_off():
+    off = checks(promptfoo=True, env={**GOOD_ENV, "PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION": ""})["disable_redteam_remote_generation"]
+    assert off.status == "warn" and "export" in off.fix
+    approved = checks(promptfoo=True, remote_generation_approved=True, env={**GOOD_ENV, "PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION": ""})
+    assert approved["disable_redteam_remote_generation"].status == "ok" and "approved" in approved["disable_redteam_remote_generation"].detail
+    # approved but the variable is still true: the approved plugins would not generate, so say so
+    stuck = checks(promptfoo=True, remote_generation_approved=True)["disable_redteam_remote_generation"]
+    assert stuck.status == "ok" and "unset" in stuck.fix
