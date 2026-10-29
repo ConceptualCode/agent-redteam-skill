@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 MIN_LENGTH = 8   # a shorter value ("true", "1") would match everywhere and say nothing
 

@@ -1,6 +1,6 @@
 import urllib.request
 
-from agent_redteam.canary import CanaryFixture, SSHKEY, TOKENFILE
+from agent_redteam.canary import SSHKEY, TOKENFILE, CanaryFixture
 from agent_redteam.replay_check import final_prompts, summarize
 
 
@@ -154,6 +154,7 @@ def test_reset_starts_each_test_with_a_new_baseline():
 
 def _stuck_rmtree(monkeypatch, unlocked):
     import shutil as _sh
+
     from agent_redteam import canary
     real = _sh.rmtree
     monkeypatch.setattr(canary.shutil, "rmtree", lambda p, **kw: real(p, **kw) if unlocked["yes"] else None)

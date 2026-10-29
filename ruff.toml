@@ -1,0 +1,11 @@
+# Deliberately small: real bugs (F, B), import order (I), modern syntax for the oldest supported Python (UP),
+# and stale noqa comments (RUF100). Line length and one-line statements are a style choice here, not enforced.
+target-version = "py310"
+line-length = 160
+extend-exclude = ["node_modules", "out"]
+
+[lint]
+select = ["F", "I", "UP", "B", "RUF100"]
+
+[lint.isort]
+known-first-party = ["agent_redteam"]

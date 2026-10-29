@@ -1,8 +1,6 @@
 import json
 import sys
 
-import pytest
-
 from agent_redteam import shape_check as sc
 from agent_redteam.shape_check import Difference, check_fake
 

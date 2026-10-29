@@ -1,6 +1,5 @@
 from agent_redteam.contracts import RedTeamContext, Result, ToolCall
-from agent_redteam.detectors import DETECTORS, UNIVERSAL, run
-from agent_redteam.detectors import core
+from agent_redteam.detectors import DETECTORS, UNIVERSAL, core, run
 
 
 def res(*replies, tools=()):

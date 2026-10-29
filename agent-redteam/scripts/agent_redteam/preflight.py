@@ -9,14 +9,14 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping
 
 from .pricing import Prices
 
 MIN_NODE = (22, 22)  # what PromptFoo requires
-MIN_PYTHON = (3, 9)
+MIN_PYTHON = (3, 10)
 
 
 @dataclass(frozen=True)

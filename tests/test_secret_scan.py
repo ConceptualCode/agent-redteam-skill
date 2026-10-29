@@ -7,7 +7,7 @@ KEY = "sk-test-0123456789abcdef"
 
 
 def test_files_holding_the_value_are_listed_and_others_are_not(tmp_path):
-    (tmp_path / "a.json").write_text('{"out": "OPENAI_API_KEY=%s"}' % KEY)
+    (tmp_path / "a.json").write_text(f'{{"out": "OPENAI_API_KEY={KEY}"}}')
     (tmp_path / "b.json").write_text("nothing here")
     got = find_secret_files([tmp_path], ["K"], env={"K": KEY})
     assert got == {"K": [str(tmp_path / "a.json")]}

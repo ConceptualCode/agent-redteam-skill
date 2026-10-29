@@ -29,7 +29,7 @@ class Prices:
         }
 
     @classmethod
-    def load(cls, path: str | Path | None = None) -> "Prices":
+    def load(cls, path: str | Path | None = None) -> Prices:
         return cls(json.loads(Path(path or DEFAULT_PRICES).read_text())["models"])
 
     def base_model(self, model: str) -> str:

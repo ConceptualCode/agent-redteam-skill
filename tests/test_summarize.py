@@ -15,7 +15,7 @@ def entry(desc="atk-a (cat, en)", success=True, output="reply", rule=None, grade
     components = []
     rules = rule if isinstance(rule, list) else ([] if rule is None else [rule])
     reasons = rule_reasons or [None] * len(rules)
-    for r, reason in zip(rules, reasons):
+    for r, reason in zip(rules, reasons, strict=True):
         comp = {"assertion": {"type": "python"}, "pass": r}
         if reason is not None:
             comp["reason"] = reason

@@ -19,7 +19,7 @@ def _fake_npm(prefix, version="9.9.9", rc=0, create=True, calls=None):
     return run
 
 
-NODE_OK = lambda cmd: "v22.23.4"  # noqa: E731
+NODE_OK = lambda cmd: "v22.23.4"
 
 
 def test_pinned_version_is_the_one_the_catalog_was_captured_from(tmp_path):
@@ -69,7 +69,7 @@ def test_npm_failure_and_a_missing_binary_are_errors(tmp_path):
 def test_the_minimum_node_version_itself_is_accepted(tmp_path):
     from agent_redteam.preflight import MIN_NODE
     p = tmp_path / "p"
-    got = install(p, "9.9.9", run=_fake_npm(p), run_out=lambda c: "v%d.%d.0" % MIN_NODE)
+    got = install(p, "9.9.9", run=_fake_npm(p), run_out=lambda c: f"v{MIN_NODE[0]}.{MIN_NODE[1]}.0")
     assert got.exists()
 
 

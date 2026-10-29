@@ -1,8 +1,8 @@
 """Tell a defence that held from a test that never reached it: if the planted content was never read, the result means nothing."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from .contracts import Result
 

@@ -1,8 +1,9 @@
 """The two shapes everything else shares: what one test produced (Result) and what a red team looks for (RedTeamContext)."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -20,7 +21,7 @@ class Result:
     tools: tuple[ToolCall, ...] = ()
 
     @classmethod
-    def from_provider(cls, output: Any, metadata: Mapping[str, Any] | None = None) -> "Result":
+    def from_provider(cls, output: Any, metadata: Mapping[str, Any] | None = None) -> Result:
         """Build from a PromptFoo provider response: `output` is the reply, `metadata["tools"]` the tool calls."""
         replies = tuple(output) if isinstance(output, (list, tuple)) else (str(output or ""),)
         calls = tuple(
@@ -43,7 +44,7 @@ class RedTeamContext:
     max_tool_calls: int = 10
 
     @classmethod
-    def from_dict(cls, raw: Mapping[str, Any]) -> "RedTeamContext":
+    def from_dict(cls, raw: Mapping[str, Any]) -> RedTeamContext:
         def fs(key):
             value = raw.get(key)
             return None if value is None else frozenset(value)

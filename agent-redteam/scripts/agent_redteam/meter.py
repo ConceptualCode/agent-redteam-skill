@@ -23,9 +23,9 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Callable
 
 from .pricing import Prices
 

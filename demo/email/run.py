@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "e2e"))
 
-from harness import report, run_promptfoo_check  # noqa: E402
+from harness import report, run_promptfoo_check
 
 HERE = Path(__file__).resolve().parents[2] / "agent-redteam" / "templates" / "email"   # the skill ships the provider + context; this runner proves them
 

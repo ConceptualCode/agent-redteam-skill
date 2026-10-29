@@ -38,7 +38,8 @@ def test_the_key_value_never_appears_in_any_output():
 
 def test_python_and_node_version_boundaries():
     assert checks(python_version=(3, 8))["python"].status == "fail"
-    assert checks(python_version=(3, 9))["python"].status == "ok"
+    assert checks(python_version=(3, 9))["python"].status == "fail"       # CI tests 3.10 and newer
+    assert checks(python_version=(3, 10))["python"].status == "ok"
     assert checks(run=lambda c: "v22.22.0")["node"].status == "ok"
     assert checks(run=lambda c: "v22.21.9", promptfoo=True)["node"].status == "fail"
     assert checks(run=lambda c: "v20.19.5")["node"].status == "warn"      # fine unless PromptFoo is wanted

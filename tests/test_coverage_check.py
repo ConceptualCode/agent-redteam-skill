@@ -2,7 +2,7 @@ import json
 import sys
 
 from agent_redteam import coverage_check as cc
-from agent_redteam.coverage_check import FieldCoverage, coverage, format_coverage
+from agent_redteam.coverage_check import coverage, format_coverage
 
 
 def by_field(rows, field):

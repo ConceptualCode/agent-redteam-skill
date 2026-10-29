@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Callable
+from collections.abc import Callable
 from urllib.parse import urlparse
 
 from ..contracts import RedTeamContext, Result

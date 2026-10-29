@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 # field -> the detector that field feeds. Order matches contracts.RedTeamContext.
 FIELDS: dict[str, str] = {
