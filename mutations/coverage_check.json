@@ -28,5 +28,10 @@
     "find": "status = \"configured\" if present and value is not None else \"not_configured\"",
     "replace": "status = \"configured\" if present else \"not_configured\"",
     "note": "a null limit is not configured"
+  },
+  {
+    "find": "    \"arg_domains\": \"arg_outside_domains\",\n",
+    "replace": "",
+    "note": "arg_domains must be reported by coverage_check"
   }
 ]

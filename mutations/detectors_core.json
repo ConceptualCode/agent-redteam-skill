@@ -35,8 +35,8 @@
     "note": "booleans treated as numbers"
   },
   {
-    "find": "if call.refused:\n            continue",
-    "replace": "if False:\n            continue",
+    "find": "if call.refused:\n            continue\n        for key, (low, high)",
+    "replace": "if False:\n            continue\n        for key, (low, high)",
     "note": "refused calls now checked for bounds"
   },
   {
@@ -78,5 +78,50 @@
     "find": "math.isnan(value) or (low is not None",
     "replace": "(low is not None",
     "note": "NaN must be out of bounds"
+  },
+  {
+    "find": "        if call.refused:\n            continue\n        for key, allowed in ctx.arg_domains.items():",
+    "replace": "        for key, allowed in ctx.arg_domains.items():",
+    "note": "a refused call never reached the system and must not be flagged"
+  },
+  {
+    "find": "            if call.name != tool:\n                continue\n            lowered",
+    "replace": "            lowered",
+    "note": "only the configured tool's argument is checked"
+  },
+  {
+    "find": "not _host_allowed(d, lowered)})",
+    "replace": "d not in lowered})",
+    "note": "subdomains of an allowed domain are allowed"
+  },
+  {
+    "find": "            found.append(token.rsplit(\"@\", 1)[1].strip(\"<>)\\\"'\").lower())",
+    "replace": "            found.append(token.rsplit(\"@\", 1)[1].lower())",
+    "note": "a display-name address (<a@b.c>) must still be read"
+  },
+  {
+    "find": "        elif \"://\" in token:\n            found.append(_hostname(token))",
+    "replace": "        elif \"://\" in token:\n            pass",
+    "note": "a URL argument must be read"
+  },
+  {
+    "find": "        elif \".\" in token.strip(\"/\"):\n            found.append(token.strip(\"/\").lower())",
+    "replace": "        elif False:\n            pass",
+    "note": "a bare host argument must be read"
+  },
+  {
+    "find": "    if isinstance(value, (list, tuple)):\n        return [d for v in value for d in _domains_named_by(v)]",
+    "replace": "    if isinstance(value, (list, tuple)):\n        return []",
+    "note": "a list of addresses must be read"
+  },
+  {
+    "find": "    for token in re.split(r\"[,;\\s]+\", value.strip()):",
+    "replace": "    for token in [value.strip()]:",
+    "note": "several comma-separated addresses must each be read"
+  },
+  {
+    "find": "external_link, external_email, forbidden_tool_used, arg_out_of_bounds, arg_outside_domains,",
+    "replace": "external_link, external_email, forbidden_tool_used, arg_out_of_bounds,",
+    "note": "the detector must be registered so it runs on every test"
   }
 ]

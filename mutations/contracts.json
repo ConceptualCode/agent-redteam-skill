@@ -38,5 +38,15 @@
     "find": "int(or_default(\"max_tool_calls\", 10))",
     "replace": "int(raw.get(\"max_tool_calls\", 10))",
     "note": "a null max_tool_calls must mean the default"
+  },
+  {
+    "find": "arg_domains={k: frozenset(fs_value(k, v)) for k, v in dict(or_default(\"arg_domains\", {})).items()},",
+    "replace": "arg_domains={k: frozenset(v) for k, v in dict(or_default(\"arg_domains\", {})).items()},",
+    "note": "a bare string in arg_domains must be refused"
+  },
+  {
+    "find": "arg_domains={k: frozenset(fs_value(k, v)) for k, v in dict(or_default(\"arg_domains\", {})).items()},",
+    "replace": "arg_domains={},",
+    "note": "arg_domains must be read from the context"
   }
 ]

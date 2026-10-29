@@ -12,6 +12,7 @@ specific claim as structurally verified, not run-proven, until a real eval confi
 from __future__ import annotations
 
 import json
+import shlex
 from dataclasses import dataclass
 
 from .promptfoo_catalog import Catalog
@@ -102,11 +103,29 @@ def redteam_eval_args(generated_path: str, strategies: list[str], remote_replies
     return args + (["--remote"] if needs else [])
 
 
+def run_env_block(config_dir: str, node_bin_dir: str | None = None, meter_port: int | None = None,
+                  remote_generation: bool = False) -> str:
+    """The `export` lines every PromptFoo command of a run needs, as one block to put in a file (`env.sh`) and `source`.
+    Nothing here is secret. `node_bin_dir` puts the Node that preflight accepted first on PATH; `meter_port` points the
+    model client at the local meter with a throwaway key (the meter holds the real one, see `--key-env`);
+    `remote_generation=True` leaves PromptFoo's remote generation on, which is only for a run where the developer approved it."""
+    q = shlex.quote
+    lines = []
+    if node_bin_dir:
+        lines.append(f"export PATH={q(node_bin_dir)}:$PATH")
+    lines.append("export CI=true PROMPTFOO_DISABLE_SHARING=true PROMPTFOO_DISABLE_TELEMETRY=true PROMPTFOO_DISABLE_UPDATE=true")
+    if not remote_generation:
+        lines.append("export PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true")
+    lines.append(f"export PROMPTFOO_CONFIG_DIR={q(config_dir)}")
+    if meter_port is not None:
+        lines.append(f"export OPENAI_API_KEY=throwaway OPENAI_BASE_URL=http://127.0.0.1:{int(meter_port)}/v1")
+    return "\n".join(lines) + "\n"
+
+
 def view_command(config_dir: str, promptfoo: str = "promptfoo", node_bin_dir: str | None = None) -> str:
     """The exact shell line to put at the end of the report. PromptFoo needs Node 22.22+, and the `node` first on a
     developer's PATH is often older (a bare `promptfoo view` then fails), so the Node that preflight accepted goes
     in front of PATH. Paths are quoted, since a project path may contain spaces."""
-    import shlex
     path = f"PATH={shlex.quote(node_bin_dir)}:$PATH " if node_bin_dir else ""
     return f"PROMPTFOO_CONFIG_DIR={shlex.quote(config_dir)} {path}{shlex.quote(promptfoo)} view"
 
@@ -150,6 +169,34 @@ def _target_providers_yaml(target: Target) -> str:
         f"      url: {json.dumps(target.value)}\n      method: POST\n      headers:\n        Content-Type: application/json\n"
         '      body:\n        q: "{{q}}"\n'
         '      transformResponse: "(json) => ({ output: json.output, metadata: json.metadata })"\n'
+    )
+
+
+def build_handwritten_config(target: Target, context_file: str, bridge_path: str, tests: list[dict],
+                             canary_path: str | None = None) -> str:
+    """The full promptfooconfig.yaml for Path B (hand-written attacks, no `redteam:` section). Each test is
+    `{"description": "leak-attempt", "q": "the attack text"}`; a control starts with `ctl-` (`summarize` reads that prefix).
+    The bridge is wired in as the default assertion, and the canary oracle too when `canary_path` is given. Values from
+    paths and attack text are quoted, so a colon, a hash or a quote in them cannot break the file."""
+    if not tests:
+        raise ValueError("at least one test is required")
+    seen = set()
+    for t in tests:
+        if not t.get("description") or "q" not in t:
+            raise ValueError(f"each test needs a description and q: {t!r}")
+        if t["description"] in seen:
+            raise ValueError(f"duplicate test description: {t['description']!r}")
+        seen.add(t["description"])
+    canary_block = f"    - type: python\n      value: {json.dumps('file://' + canary_path)}\n" if canary_path else ""
+    tests_yaml = "".join(f"  - description: {json.dumps(t['description'])}\n    vars: {{q: {json.dumps(t['q'])}}}\n" for t in tests)
+    return (
+        "description: hand-written red team run\n"
+        'prompts: ["{{q}}"]\n'
+        f"{_target_providers_yaml(target)}"
+        f"defaultTest:\n  assert:\n    - type: python\n"
+        f"      value: {json.dumps('file://' + bridge_path)}\n      config:\n        context_file: {json.dumps(context_file)}\n"
+        f"{canary_block}"
+        f"tests:\n{tests_yaml}"
     )
 
 

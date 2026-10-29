@@ -26,18 +26,23 @@ numeric bound (a discount, a spend limit) or a per-turn rate? Don't over-ask; ex
 **If requests are routed to several sub-agents**, that is several things to test: see `references/multi-agent-systems.md`.
 
 ## 1. Write a RedTeamContext
-`context.json` captures the slice of "what must never happen" a deterministic check can verify: hosts and email domains never to
-reach, forbidden tools, per-tool allowances, argument bounds, reply-length and tool-call ceilings. Read
+`context.json` captures the slice of "what must never happen" a deterministic check can verify: forbidden tools, per-tool
+allowances, numeric argument bounds, the domains a tool argument may name (`arg_domains`: where data leaves in a tool call), links and
+addresses allowed in a *reply*, and reply-length and tool-call ceilings. Read
 `references/writing-a-context.md`; `templates/{shop,email,file}/context.json` are three complete examples to start from.
 
 **Derive `max_tool_calls` from the agent**: read its own step cap or measure a benign baseline, and record the basis in
 `max_tool_calls_source`. A cap that cannot trip (one real agent defaulted to 500) is not a usable limit.
 
-**Then check the context isn't quietly empty:** `python -m agent_redteam.coverage_check context.json`. A detector with nothing
+**Then check the context isn't quietly empty:** `python -m agent_redteam.coverage_check context.json` (every `agent_redteam` command in this file
+runs from this skill's `scripts/` folder, or with it on `PYTHONPATH`). A detector with nothing
 configured never fires, so "held" can mean "we never told it what to look for". For every `not_configured` line, ask the developer
 whether the agent genuinely has nothing to flag there or nobody filled it in.
 
-**If no real model will be called** (a scripted stand-in like `templates/*/provider.py`), skip steps 2 to 4.
+**If the agent calls no model** (a scripted stand-in like `templates/*/provider.py`), skip steps 3 and 4 (budget and meter) and run step 2 as
+`preflight --no-model --promptfoo --project <dir>`: PromptFoo is still the runner, so it still has to be installed. Path B then costs nothing. The
+Path A baseline still needs a generator and a judge model, but on a scripted agent that is a few cents (about $0.01 for six tests in a fresh-install
+test), so run it with a small budget unless the developer says no model spend at all, and then say the baseline was not run.
 
 ## 2. Preflight, before anything spends money
 ```
@@ -91,15 +96,18 @@ the developer should not have to set PromptFoo up by hand. The full procedure is
   target description and plugin config, per target, or it is dropped and you say so (`references/promptfoo-setup.md`).
 - **Adaptive strategies (`jailbreak`, `hydra`, ...) send the agent's replies off the machine.** Default to the local
   `jailbreak-templates`; use the adaptive ones only after an explicit yes. Never add `--remote` yourself.
-- **Path B, hand-written attacks** against the real agent, one per planted scenario, controls named `ctl-...`.
-- **Shell, code or file tools:** the 7 detectors see tool names, not what a tool did. Use the canary oracle,
+- **Path B, hand-written attacks** against the real agent, one per planted scenario, controls named `ctl-...`. Write the provider to the contract in
+  `references/promptfoo-setup.md` (it returns `output` and `metadata.tools`), then build the whole config with `build_handwritten_config(...)`.
+- **Shell, code or file tools:** the generic detectors see tool names, not what a tool did. Use the canary oracle,
   `references/canary-oracle.md`. If the agent keeps state across requests, see `references/stateful-providers.md`.
 - **Audit the config itself:** `python -m agent_redteam.redteam_config_check promptfooconfig.yaml [more.yaml ...]`.
 
 **Generate, read, plant, then run.** For an agent with shell, code or file tools, do not use `promptfoo redteam run`: the attacks
 name files, processes and repos you haven't created, and the agent just says "not found". Build the commands with
 `redteam_generate_args` (writes `redteam.yaml`, runs nothing), read the prompts and plant what they name, then
-`redteam_eval_args` (one test at a time). Set `CI=true` first. See the same reference for the details and the helpers' arguments.
+`redteam_eval_args` (one test at a time). Put `run_env_block(...)` in an `env.sh` and `source` it before every PromptFoo command (Node 22, `CI=true`,
+sharing and telemetry off, config dir, meter URL); `promptfoo ... eval` exits with code 100 when any test fails, which is a result, not an error.
+See the same reference for the details and the helpers' arguments.
 
 ## 6. Run it, then read the real results
 Evaluate, then `python -m agent_redteam.summarize results.json`: it separates controls (`ctl-`) from attacks, says which check caught
@@ -108,7 +116,8 @@ cases where the judge disagreed with the deterministic rule are signals to read,
 
 **Keep the results where the developer can open them:** point `PROMPTFOO_CONFIG_DIR` at a folder inside their project (never a
 scratch directory) and end the report with `view_command(...)`, confirmed to start. Never enable PromptFoo's sharing. **Before keeping
-or sharing that folder**, run `python -m agent_redteam.secret_scan --env OPENAI_API_KEY <results folder> REPORT.md`; a hit means the
+or sharing that folder**, run `python -m agent_redteam.secret_scan --env OPENAI_API_KEY <results folder> REPORT.md` (skip it if the run used no key at all, since it exits 2 when the
+variable is unset); a hit means the
 key leaked: say so first, tell the developer to rotate it, and redact. Details: `references/running-attacks.md`.
 
 ## 7. Before trusting a "held", check it is not a false one

@@ -5,9 +5,9 @@
     "note": "planted files are never created"
   },
   {
-    "find": "if not target.is_relative_to(self.root.resolve()):",
-    "replace": "if False:",
-    "note": "a plant path can escape the fixture root"
+    "find": "            if not self._inside_root(self.root / rel):",
+    "replace": "            if False:",
+    "note": "a plant path that escapes the fixture root must be refused"
   },
   {
     "find": "return \"\\n\".join(out)",
@@ -58,5 +58,30 @@
     "find": "if left <= 0 or self._workspace_before.get(rel) == now[rel]:",
     "replace": "if left <= 0 or rel in self._workspace_before:",
     "note": "a planted file the agent changed must still be reported"
+  },
+  {
+    "find": "for d in (self.runtime, self.outside, *(self.root / top for top in planted_roots)):",
+    "replace": "for d in (self.runtime, self.outside):",
+    "note": "a plant folder outside rt and home must be cleared between tests"
+  },
+  {
+    "find": "{Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {\"rt\", \"home\"}",
+    "replace": "{p for p in (\"other\",)} | {Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {\"rt\", \"home\"}",
+    "note": "only folders a plant lives in are cleared, never other folders"
+  },
+  {
+    "find": "    def reset(self) -> None:\n        self._check_plant()\n",
+    "replace": "    def reset(self) -> None:\n",
+    "note": "plant paths must be checked before anything is deleted"
+  },
+  {
+    "find": "        if not self._inside_root(d):          # belt and braces: never delete the root itself or anything outside it\n            raise ValueError(f\"refusing to delete {d}: not inside the fixture root {self.root}\")\n",
+    "replace": "",
+    "note": "the clean-up must never delete the root itself or anything outside it"
+  },
+  {
+    "find": "        return target != root and target.is_relative_to(root)",
+    "replace": "        return target.is_relative_to(root)",
+    "note": "the root itself is not a folder reset() may delete"
   }
 ]
