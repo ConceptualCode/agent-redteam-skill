@@ -99,9 +99,9 @@ tests:
 ```
 
 Wire grading with `value: file://.../scripts/assert_bridge.py` and `config: {context_file: <path>}`. `detectors.md` lists every
-detector and the wording each needs to trigger. **If a tool is a general executor (shell, code interpreter, file reader), the 7
+detector and the wording each needs to trigger. **If a tool is a general executor (shell, code interpreter, file reader), the generic
 detectors can't judge it**, since they see the tool name, not what it did: use the canary oracle (`canary-oracle.md`). For a check
-none of the 7 cover, or a secret or planted-instruction leak (no deterministic detector exists for either), write a small
+none of them cover, or a secret or planted-instruction leak (no deterministic detector exists for either), write a small
 project-local Python function and wire it as a second `type: python` assertion beside the bridge.
 
 ## Auditing the config

@@ -26,8 +26,9 @@ numeric bound (a discount, a spend limit) or a per-turn rate? Don't over-ask; ex
 **If requests are routed to several sub-agents**, that is several things to test: see `references/multi-agent-systems.md`.
 
 ## 1. Write a RedTeamContext
-`context.json` captures the slice of "what must never happen" a deterministic check can verify: hosts and email domains never to
-reach, forbidden tools, per-tool allowances, argument bounds, reply-length and tool-call ceilings. Read
+`context.json` captures the slice of "what must never happen" a deterministic check can verify: forbidden tools, per-tool
+allowances, numeric argument bounds, the domains a tool argument may name (`arg_domains`: where data leaves in a tool call), links and
+addresses allowed in a *reply*, and reply-length and tool-call ceilings. Read
 `references/writing-a-context.md`; `templates/{shop,email,file}/context.json` are three complete examples to start from.
 
 **Derive `max_tool_calls` from the agent**: read its own step cap or measure a benign baseline, and record the basis in
@@ -92,7 +93,7 @@ the developer should not have to set PromptFoo up by hand. The full procedure is
 - **Adaptive strategies (`jailbreak`, `hydra`, ...) send the agent's replies off the machine.** Default to the local
   `jailbreak-templates`; use the adaptive ones only after an explicit yes. Never add `--remote` yourself.
 - **Path B, hand-written attacks** against the real agent, one per planted scenario, controls named `ctl-...`.
-- **Shell, code or file tools:** the 7 detectors see tool names, not what a tool did. Use the canary oracle,
+- **Shell, code or file tools:** the generic detectors see tool names, not what a tool did. Use the canary oracle,
   `references/canary-oracle.md`. If the agent keeps state across requests, see `references/stateful-providers.md`.
 - **Audit the config itself:** `python -m agent_redteam.redteam_config_check promptfooconfig.yaml [more.yaml ...]`.
 

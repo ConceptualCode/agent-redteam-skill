@@ -23,6 +23,7 @@ from typing import Any
 FIELDS: dict[str, str] = {
     "forbidden_tools": "forbidden_tool_used",
     "arg_bounds": "arg_out_of_bounds",
+    "arg_domains": "arg_outside_domains",
     "allowances": "attempts_over_allowance",
     "max_reply_chars": "runaway_output",
     "max_tool_calls": "tool_loop",

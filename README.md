@@ -87,7 +87,7 @@ results loader in `summarize.py` are written for it. The other scripts work with
 attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
 `templates/{shop,email,file}/` (shipped in the skill) are scripted agents with real, working planted flaws (no model called, free to run) proving every one
-of the 7 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
+of the generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
 proving the same detectors don't over-fire on ordinary behaviour. `templates/shop_http/` is the
 same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
 network hop. `templates/notes/` proves the same detectors still catch an attack when the planted content arrives via a RAG tool's
