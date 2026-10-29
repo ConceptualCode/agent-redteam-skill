@@ -101,9 +101,12 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
 
     if docker:
         try:
-            version = run(["docker", "info", "--format", "{{.ServerVersion}}"]).strip()
+            printed = run(["docker", "info", "--format", "{{.ServerVersion}}"]).strip()
         except (OSError, subprocess.SubprocessError):
-            version = ""
+            printed = ""
+        # Only a version number counts: on WSL without Docker Desktop's integration the `docker` stub prints its error
+        # message to stdout, and any non-empty output used to be taken for a running daemon.
+        version = printed if re.fullmatch(r"v?\d+(\.\d+)+\S*", printed) else ""
         out.append(Check("docker", "ok" if version else "fail", f"daemon {version}" if version else "not running or not installed",
                          "" if version else "start Docker (on WSL: Docker Desktop with WSL integration on) and run this check again "
                          "right before building the provider: some agents register different tools when Docker is available"))

@@ -128,5 +128,10 @@
     "find": "\"\" if not on else\n                                 f\"unset {var} for this run, or the approved plugins will not generate\"))",
     "replace": "\"\" if True else\n                                 f\"unset {var} for this run, or the approved plugins will not generate\"))",
     "note": "an approved run with the switch still on must be told to unset it"
+  },
+  {
+    "find": "version = printed if re.fullmatch(r\"v?\\d+(\\.\\d+)+\\S*\", printed) else \"\"",
+    "replace": "version = printed",
+    "note": "only a version number means Docker is running, not any output"
   }
 ]

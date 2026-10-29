@@ -198,3 +198,12 @@ def test_approved_remote_generation_is_not_reported_as_something_to_switch_off()
     # approved but the variable is still true: the approved plugins would not generate, so say so
     stuck = checks(promptfoo=True, remote_generation_approved=True)["disable_redteam_remote_generation"]
     assert stuck.status == "ok" and "unset" in stuck.fix
+
+
+def test_docker_is_not_ok_when_the_wsl_stub_prints_its_error_message_instead_of_a_version():
+    stub = ("The command 'docker' could not be found in this WSL 2 distro.\n"
+            "We recommend to activate the WSL integration in Docker Desktop settings.\n")
+    got = checks(docker=True, run=lambda cmd: stub if cmd[0] == "docker" else "v22.23.3\n")["docker"]
+    assert got.status == "fail" and "right before building the provider" in got.fix
+    for ok in ("27.3.1\n", "28.0.0-rc.1\n", "v27.3.1\n"):
+        assert checks(docker=True, run=lambda cmd, ok=ok: ok if cmd[0] == "docker" else "v22.23.3\n")["docker"].status == "ok"
