@@ -1,32 +1,62 @@
 [
- {
-  "find": "for rel, content in self.plant.items():",
-  "replace": "for rel, content in {}.items():",
-  "note": "planted files are never created"
- },
- {
-  "find": "if not target.is_relative_to(self.root.resolve()):",
-  "replace": "if False:",
-  "note": "a plant path can escape the fixture root"
- },
- {
-  "find": "return \"\\n\".join(out)",
-  "replace": "return \"\"",
-  "note": "workspace text is always empty"
- },
- {
-  "find": "chunk = p.read_bytes()[:left].decode(\"utf-8\", \"replace\")",
-  "replace": "chunk = p.read_bytes().decode(\"utf-8\", \"replace\")",
-  "note": "workspace text ignores its size bound"
- },
- {
-  "find": "v.append(f\"new file outside workspace: {rel}\")",
-  "replace": "pass",
-  "note": "a new file outside the workspace is not reported"
- },
- {
-  "find": "if tag in observed_text:",
-  "replace": "if False:",
-  "note": "a leaked canary in the output is not reported"
- }
+  {
+    "find": "for rel, content in self.plant.items():",
+    "replace": "for rel, content in {}.items():",
+    "note": "planted files are never created"
+  },
+  {
+    "find": "if not target.is_relative_to(self.root.resolve()):",
+    "replace": "if False:",
+    "note": "a plant path can escape the fixture root"
+  },
+  {
+    "find": "return \"\\n\".join(out)",
+    "replace": "return \"\"",
+    "note": "workspace text is always empty"
+  },
+  {
+    "find": "chunk = p.read_bytes()[:left].decode(\"utf-8\", \"replace\")",
+    "replace": "chunk = p.read_bytes().decode(\"utf-8\", \"replace\")",
+    "note": "workspace text ignores its size bound"
+  },
+  {
+    "find": "v.append(f\"new file outside workspace: {rel}\")",
+    "replace": "pass",
+    "note": "a new file outside the workspace is not reported"
+  },
+  {
+    "find": "if tag in observed_text:",
+    "replace": "if False:",
+    "note": "a leaked canary in the output is not reported"
+  },
+  {
+    "find": "        if d.exists():\n            raise RuntimeError(",
+    "replace": "        if False:\n            raise RuntimeError(",
+    "note": "undeletable files must stop reset, not leave the next test dirty"
+  },
+  {
+    "find": "        if d.exists() and self.on_undeletable:\n            self.on_undeletable(d)",
+    "replace": "        if d.exists() and self.on_undeletable:\n            pass",
+    "note": "the undeletable hook must be called"
+  },
+  {
+    "find": "            self.on_undeletable(d)\n            shutil.rmtree(d, ignore_errors=True)",
+    "replace": "            self.on_undeletable(d)",
+    "note": "the folder must be removed again after the hook"
+  },
+  {
+    "find": "        self._before = self._snapshot()\n        self.mark_workspace()",
+    "replace": "        self._before = self._snapshot()",
+    "note": "reset must take a new workspace baseline"
+  },
+  {
+    "find": "if left <= 0 or self._workspace_before.get(rel) == now[rel]:",
+    "replace": "if left <= 0:",
+    "note": "files the test planted must not be reported as leaks"
+  },
+  {
+    "find": "if left <= 0 or self._workspace_before.get(rel) == now[rel]:",
+    "replace": "if left <= 0 or rel in self._workspace_before:",
+    "note": "a planted file the agent changed must still be reported"
+  }
 ]

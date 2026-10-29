@@ -13,7 +13,7 @@ Deliberately not a general YAML parser -- it only looks for the shapes `build_co
 top-level `redteam:` block with an indented `plugins:` list) or a close hand-written equivalent. A config
 that doesn't match that shape at all reads as "no redteam section", which is the honest answer for it.
 
-    python -m agent_redteam.redteam_config_check promptfooconfig.yaml
+    python -m agent_redteam.redteam_config_check promptfooconfig.yaml [more.yaml ...]   # several files = one run
 """
 from __future__ import annotations
 
@@ -67,6 +67,22 @@ def audit(yaml_text: str) -> WorkflowAudit:
     )
 
 
+def audit_all(yaml_texts: list[str]) -> WorkflowAudit:
+    """Audit several config files as ONE run. A run split over two configs (say local plugins and remote-generated
+    ones) has the baseline when the files together have it; checking each alone reports it missing from both. The
+    bridge and canary count as wired only if every file wires them: a config without the bridge gets no
+    deterministic grading, whatever the others do."""
+    audits = [audit(t) for t in yaml_texts]
+    plugins = tuple(dict.fromkeys(p for a in audits for p in a.plugins))
+    return WorkflowAudit(
+        has_bridge_assertion=all(a.has_bridge_assertion for a in audits),
+        has_canary_assertion=all(a.has_canary_assertion for a in audits),
+        has_redteam_section=any(a.has_redteam_section for a in audits),
+        plugins=plugins,
+        missing_baseline=tuple(p for p in BASELINE_PLUGINS if p not in plugins),
+    )
+
+
 def format_audit(a: WorkflowAudit) -> str:
     lines = [
         "deterministic bridge wired in (assert_bridge.py): "
@@ -96,9 +112,13 @@ def format_audit(a: WorkflowAudit) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("config_file")
+    ap.add_argument("config_file", nargs="+", help="one or more config files of the same run, checked together")
     args = ap.parse_args()
-    a = audit(Path(args.config_file).read_text())
+    texts = [Path(f).read_text() for f in args.config_file]
+    for f, t in zip(args.config_file, texts):
+        if not audit(t).has_bridge_assertion:
+            print(f"{f}: no assert_bridge.py wired in")
+    a = audit_all(texts)
     print(format_audit(a))
     return 1 if not a.has_bridge_assertion else 0
 

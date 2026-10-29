@@ -130,3 +130,21 @@ def test_project_lookup_ignores_the_skills_own_copy_and_reports_where_it_found_o
     (project / ".agent-redteam" / "node_modules" / ".bin" / "promptfoo").write_text("")
     found = checks(promptfoo=True, which=no_which, project=str(project))["promptfoo"]
     assert found.status == "ok" and str(project) in found.detail
+
+
+def test_docker_is_checked_only_when_asked_and_a_running_daemon_is_ok():
+    assert "docker" not in checks()
+    assert checks(docker=True, run=lambda cmd: "27.3.1\n" if cmd[0] == "docker" else "v22.23.3\n")["docker"].status == "ok"
+
+
+def test_a_missing_or_stopped_docker_fails_with_a_fix_that_says_to_recheck():
+    def stopped(cmd):
+        return "" if cmd[0] == "docker" else "v22.23.3\n"
+
+    def missing(cmd):
+        if cmd[0] == "docker":
+            raise FileNotFoundError("docker")
+        return "v22.23.3\n"
+    for runner in (stopped, missing):
+        c = checks(docker=True, run=runner)["docker"]
+        assert c.status == "fail" and "right before building the provider" in c.fix

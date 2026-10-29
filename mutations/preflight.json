@@ -1,77 +1,92 @@
 [
- {
-  "find": "\"ok\" if python_version >= MIN_PYTHON else \"fail\"",
-  "replace": "\"ok\" if python_version > MIN_PYTHON else \"fail\"",
-  "note": "python version boundary off by one"
- },
- {
-  "find": "MIN_NODE = (22, 22)",
-  "replace": "MIN_NODE = (22, 23)",
-  "note": "node minimum changed"
- },
- {
-  "find": "elif node < MIN_NODE:",
-  "replace": "elif node <= MIN_NODE:",
-  "note": "node boundary off by one"
- },
- {
-  "find": "out.append(Check(\"node\", \"fail\" if promptfoo else \"warn\", \"not found\"",
-  "replace": "out.append(Check(\"node\", \"fail\", \"not found\"",
-  "note": "missing node always fails"
- },
- {
-  "find": "out.append(Check(\"node\", \"fail\" if promptfoo else \"warn\", f\"{node[0]}.{node[1]}\"",
-  "replace": "out.append(Check(\"node\", \"warn\", f\"{node[0]}.{node[1]}\"",
-  "note": "old node never fails in promptfoo mode"
- },
- {
-  "find": "    if promptfoo:\n        found = which",
-  "replace": "    if True:\n        found = which",
-  "note": "promptfoo checked outside promptfoo mode"
- },
- {
-  "find": "for d in ((here,) if project else (here, *here.parents)):",
-  "replace": "for d in (here,):",
-  "note": "promptfoo not found from a subdirectory of where it was installed"
- },
- {
-  "find": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var} is set\" if key else f\"{key_var} is not set\",",
-  "replace": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var}={key}\" if key else f\"{key_var} is not set\",",
-  "note": "key value printed"
- },
- {
-  "find": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\"))",
-  "replace": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\", \"https://\"))",
-  "note": "remote urls count as routed"
- },
- {
-  "find": "    except (OSError, ValueError):\n        out.append(Check(\"meter running\"",
-  "replace": "    except OSError:\n        out.append(Check(\"meter running\"",
-  "note": "an invalid meter reply crashes"
- },
- {
-  "find": "on = env.get(var, \"\").lower() == \"true\"",
-  "replace": "on = bool(env.get(var, \"\"))",
-  "note": "any value counts as switched on"
- },
- {
-  "find": "on = env.get(var, \"\").lower() == \"true\"",
-  "replace": "on = env.get(var, \"\") == \"true\"",
-  "note": "switch is case-sensitive"
- },
- {
-  "find": "    if promptfoo:\n        for var, why",
-  "replace": "    if True:\n        for var, why",
-  "note": "privacy switches checked outside promptfoo mode"
- },
- {
-  "find": "for d in ((here,) if project else (here, *here.parents)):",
-  "replace": "for d in (here, *here.parents):",
-  "note": "--project also walks up into the skill's own folder"
- },
- {
-  "find": "found = which(\"promptfoo\") or _find_local_promptfoo(project)",
-  "replace": "found = which(\"promptfoo\") or _find_local_promptfoo()",
-  "note": "--project is ignored"
- }
+  {
+    "find": "\"ok\" if python_version >= MIN_PYTHON else \"fail\"",
+    "replace": "\"ok\" if python_version > MIN_PYTHON else \"fail\"",
+    "note": "python version boundary off by one"
+  },
+  {
+    "find": "MIN_NODE = (22, 22)",
+    "replace": "MIN_NODE = (22, 23)",
+    "note": "node minimum changed"
+  },
+  {
+    "find": "elif node < MIN_NODE:",
+    "replace": "elif node <= MIN_NODE:",
+    "note": "node boundary off by one"
+  },
+  {
+    "find": "out.append(Check(\"node\", \"fail\" if promptfoo else \"warn\", \"not found\"",
+    "replace": "out.append(Check(\"node\", \"fail\", \"not found\"",
+    "note": "missing node always fails"
+  },
+  {
+    "find": "out.append(Check(\"node\", \"fail\" if promptfoo else \"warn\", f\"{node[0]}.{node[1]}\"",
+    "replace": "out.append(Check(\"node\", \"warn\", f\"{node[0]}.{node[1]}\"",
+    "note": "old node never fails in promptfoo mode"
+  },
+  {
+    "find": "    if promptfoo:\n        found = which",
+    "replace": "    if True:\n        found = which",
+    "note": "promptfoo checked outside promptfoo mode"
+  },
+  {
+    "find": "for d in ((here,) if project else (here, *here.parents)):",
+    "replace": "for d in (here,):",
+    "note": "promptfoo not found from a subdirectory of where it was installed"
+  },
+  {
+    "find": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var} is set\" if key else f\"{key_var} is not set\",",
+    "replace": "out.append(Check(\"api key\", \"ok\" if key else \"fail\", f\"{key_var}={key}\" if key else f\"{key_var} is not set\",",
+    "note": "key value printed"
+  },
+  {
+    "find": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\"))",
+    "replace": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\", \"https://\"))",
+    "note": "remote urls count as routed"
+  },
+  {
+    "find": "    except (OSError, ValueError):\n        out.append(Check(\"meter running\"",
+    "replace": "    except OSError:\n        out.append(Check(\"meter running\"",
+    "note": "an invalid meter reply crashes"
+  },
+  {
+    "find": "on = env.get(var, \"\").lower() == \"true\"",
+    "replace": "on = bool(env.get(var, \"\"))",
+    "note": "any value counts as switched on"
+  },
+  {
+    "find": "on = env.get(var, \"\").lower() == \"true\"",
+    "replace": "on = env.get(var, \"\") == \"true\"",
+    "note": "switch is case-sensitive"
+  },
+  {
+    "find": "    if promptfoo:\n        for var, why",
+    "replace": "    if True:\n        for var, why",
+    "note": "privacy switches checked outside promptfoo mode"
+  },
+  {
+    "find": "for d in ((here,) if project else (here, *here.parents)):",
+    "replace": "for d in (here, *here.parents):",
+    "note": "--project also walks up into the skill's own folder"
+  },
+  {
+    "find": "found = which(\"promptfoo\") or _find_local_promptfoo(project)",
+    "replace": "found = which(\"promptfoo\") or _find_local_promptfoo()",
+    "note": "--project is ignored"
+  },
+  {
+    "find": "out.append(Check(\"docker\", \"ok\" if version else \"fail\"",
+    "replace": "out.append(Check(\"docker\", \"ok\" if version else \"warn\"",
+    "note": "a missing Docker is a failure when asked for"
+  },
+  {
+    "find": "    if docker:\n        try:",
+    "replace": "    if False:\n        try:",
+    "note": "docker is checked when asked"
+  },
+  {
+    "find": "right before building the provider: some agents",
+    "replace": "sometime: some agents",
+    "note": "the fix must say to re-check right before building the provider"
+  }
 ]

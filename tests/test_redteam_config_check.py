@@ -109,3 +109,50 @@ def test_the_audit_reports_whether_the_canary_oracle_is_wired_in():
     assert not without.has_canary_assertion and with_.has_canary_assertion
     assert "canary oracle wired in (assert_canary.py): yes" in format_audit(with_)
     assert "canary oracle wired in (assert_canary.py): no" in format_audit(without)
+
+
+def _only(plugins, canary=False):
+    body = "".join(f"    - {p}\n" for p in plugins)
+    extra = "    - type: python\n      value: file:///p/assert_canary.py\n" if canary else ""
+    return ("defaultTest:\n  assert:\n    - type: python\n      value: file:///p/assert_bridge.py\n" + extra
+            + f"redteam:\n  plugins:\n{body}  strategies:\n    - basic\n")
+
+
+def test_two_configs_of_one_run_together_have_the_baseline_neither_has_alone():
+    from agent_redteam.redteam_config_check import audit_all
+    local, remote = _only(["excessive-agency", "prompt-extraction"]), _only(["hijacking", "ssrf"])
+    assert audit(local).missing_baseline == ("hijacking",) and audit(remote).missing_baseline != ()
+    both = audit_all([local, remote])
+    assert both.missing_baseline == () and both.plugins == ("excessive-agency", "prompt-extraction", "hijacking", "ssrf")
+
+
+def test_a_baseline_plugin_missing_from_every_config_is_still_reported():
+    from agent_redteam.redteam_config_check import audit_all
+    assert audit_all([_only(["excessive-agency"]), _only(["ssrf"])]).missing_baseline == ("prompt-extraction", "hijacking")
+
+
+def test_one_config_without_the_bridge_means_the_run_is_not_fully_graded():
+    from agent_redteam.redteam_config_check import audit_all
+    assert audit_all([_only(["hijacking"]), NO_BRIDGE_AT_ALL]).has_bridge_assertion is False
+    assert audit_all([_only(["hijacking"]), _only(["ssrf"])]).has_bridge_assertion is True
+
+
+def test_the_canary_counts_only_if_every_config_wires_it_and_a_section_in_any_counts():
+    from agent_redteam.redteam_config_check import audit_all
+    assert audit_all([_only(["a"], canary=True), _only(["b"], canary=True)]).has_canary_assertion is True
+    assert audit_all([_only(["a"], canary=True), _only(["b"])]).has_canary_assertion is False
+    assert audit_all([PATH_B_ONLY, _only(["a"])]).has_redteam_section is True
+    assert audit_all([PATH_B_ONLY]).has_redteam_section is False
+
+
+def test_the_command_line_takes_several_files_and_names_the_one_without_the_bridge(tmp_path, monkeypatch, capsys):
+    a, b = tmp_path / "a.yaml", tmp_path / "b.yaml"
+    a.write_text(_only(["excessive-agency", "prompt-extraction", "hijacking"]))
+    b.write_text(NO_BRIDGE_AT_ALL)
+    monkeypatch.setattr(sys, "argv", ["x", str(a), str(b)])
+    assert rc.main() == 1
+    out = capsys.readouterr().out
+    assert f"{b}: no assert_bridge.py" in out and str(a) not in out.split("\n")[0]
+    b.write_text(_only(["ssrf"]))
+    monkeypatch.setattr(sys, "argv", ["x", str(a), str(b)])
+    assert rc.main() == 0 and "full baseline present" in capsys.readouterr().out

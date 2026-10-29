@@ -42,7 +42,9 @@ reads as held although the defence was never tried. Read the generated prompts f
   deleting one is a violation, like the built-in canaries. Paths are relative to the fixture root and cannot escape it.
 - Put the tools the scenarios assume into the agent's environment (`git`, a shell, `ps`), or report those tests inconclusive.
 - Pass `fx.workspace_text()` too: `fx.violations(reply + tool_outputs + fx.workspace_text())`. A secret the agent writes into a
-  workspace file but never prints is otherwise invisible.
+  workspace file but never prints is otherwise invisible. It returns only files the agent created or changed, so a file your
+  provider puts in the workspace is not reported as a leak: call `fx.mark_workspace()` after your provider has planted its own
+  files (`reset()` marks the workspace itself, so files given through `plant=` are already excluded).
 
 ## When the agent runs in a container
 The fixture and the meter live on the host; the agent does not. A working shape (a `provider.py` that starts one
@@ -61,6 +63,12 @@ throwaway container per test):
   `NO_PROXY=host.docker.internal,localhost` so the meter is not refused). Do not call `enable_proxy_egress()` on the host.
 - Run on a benign prompt first: anything the agent's own startup fetches (e.g. a model price list) shows up as an
   "attempted outbound connection". Switch that off in the container or add the host to `allowed_hosts`.
+- A container running as root leaves root-owned files that `reset()` cannot delete as your user. `reset()` then raises
+  rather than start the next test dirty; pass `CanaryFixture(on_undeletable=fn)`, where `fn(path)` chowns the folder back
+  (for example `docker run --rm -v <path>:/c <agent image> chown -R <your uid> /c`).
+- Check Docker with `preflight --docker` right before building the provider, not only at the start: some agents register
+  different tools (a code-execution tool, for example) depending on whether Docker is available, so a daemon that comes up
+  partway through changes what you are testing.
 - One shared fixture means one test at a time: run PromptFoo with `-j 1` (`redteam_run_args` does).
 - A container with normal networking can still make raw connections the proxy never sees; a hard egress guarantee needs
   network-level enforcement (a container network that only routes to the meter, with an egress log) -- not tried here.

@@ -64,7 +64,7 @@ def _find_local_promptfoo(project: str | None = None) -> Path | None:
 def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo: bool = False, meter_port: int = 8787,
                prices: Prices | None = None, key_var: str = "OPENAI_API_KEY", run: Callable = _run, project: str | None = None,
                http_get: Callable[[str], str] = _http_get, which: Callable = shutil.which,
-               python_version: tuple[int, int] = sys.version_info[:2]) -> list[Check]:
+               python_version: tuple[int, int] = sys.version_info[:2], docker: bool = False) -> list[Check]:
     prices, out = prices or Prices.load(), []
     out.append(Check("python", "ok" if python_version >= MIN_PYTHON else "fail", f"{python_version[0]}.{python_version[1]}",
                      "" if python_version >= MIN_PYTHON else f"use Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} or newer"))
@@ -83,6 +83,15 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
         out.append(Check("promptfoo", "ok" if found else "fail", f"installed ({found})" if found else "not found",
                          "" if found else f"run `python -m agent_redteam.setup_promptfoo --prefix {where.rstrip('/')}` (installs the pinned version there)"
                          + ("" if project else " -- checked this directory and its parents; pass --project <dir> to check only the project")))
+
+    if docker:
+        try:
+            version = run(["docker", "info", "--format", "{{.ServerVersion}}"]).strip()
+        except (OSError, subprocess.SubprocessError):
+            version = ""
+        out.append(Check("docker", "ok" if version else "fail", f"daemon {version}" if version else "not running or not installed",
+                         "" if version else "start Docker (on WSL: Docker Desktop with WSL integration on) and run this check again "
+                         "right before building the provider: some agents register different tools when Docker is available"))
 
     key = env.get(key_var, "")
     out.append(Check("api key", "ok" if key else "fail", f"{key_var} is set" if key else f"{key_var} is not set",
@@ -117,10 +126,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", action="append", default=["gpt-4.1"], help="a model the run will use (repeatable)")
     ap.add_argument("--promptfoo", action="store_true", help="also check what PromptFoo needs")
+    ap.add_argument("--docker", action="store_true", help="also check that the Docker daemon is running (agents run in containers)")
     ap.add_argument("--meter-port", type=int, default=8787)
     ap.add_argument("--project", help="the developer's project folder: look for PromptFoo only there (not in this skill's own folder)")
     args = ap.parse_args()
-    checks = run_checks(sorted(set(args.model)), promptfoo=args.promptfoo, meter_port=args.meter_port, project=args.project)
+    checks = run_checks(sorted(set(args.model)), promptfoo=args.promptfoo, meter_port=args.meter_port, project=args.project,
+                         docker=args.docker)
     for c in checks:
         print(f"[{c.status.upper():4}] {c.name}: {c.detail}" + (f"\n         fix: {c.fix}" if c.fix else ""))
     return 1 if any(c.status == "fail" for c in checks) else 0
