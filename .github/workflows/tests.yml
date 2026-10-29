@@ -33,15 +33,32 @@ jobs:
       - run: python -m pytest
 
   # Breaks the source on purpose, one change at a time, and fails if any test still passes.
+  # A pull request that touches only docs skips the run (the job still reports success, so the required check passes).
+  # Every push to main, and any change to code, tests, mutations, tools or CI config, runs it in full.
   mutation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE_SHA" ] || git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(agent-redteam/|tests/|mutations/|tools/|\.github/|pytest\.ini|ruff\.toml)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Only docs changed; mutation checks skipped."
+          fi
+      - if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version: "3.12"
-      - run: python -m pip install pytest
-      - run: python tools/mutation_all.py
+      - if: steps.scope.outputs.run == 'true'
+        run: python -m pip install pytest
+      - if: steps.scope.outputs.run == 'true'
+        run: python tools/mutation_all.py
 
   # Runs the scripted example agents through real PromptFoo (no model is called, so no key and no cost).
   demos:
