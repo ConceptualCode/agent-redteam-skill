@@ -40,7 +40,7 @@
     "note": "key value printed"
   },
   {
-    "find": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\"))",
+    "find": "routed = _points_at_meter(base, meter_port)",
     "replace": "routed = base.startswith((\"http://127.0.0.1\", \"http://localhost\", \"https://\"))",
     "note": "remote urls count as routed"
   },
@@ -88,5 +88,25 @@
     "find": "right before building the provider: some agents",
     "replace": "sometime: some agents",
     "note": "the fix must say to re-check right before building the provider"
+  },
+  {
+    "find": "parts.scheme == \"http\" and parts.hostname in (\"127.0.0.1\", \"localhost\", \"::1\") and parts.port == meter_port",
+    "replace": "parts.scheme == \"http\" and parts.hostname in (\"127.0.0.1\", \"localhost\", \"::1\")",
+    "note": "the port must be the meter's"
+  },
+  {
+    "find": "parts.hostname in (\"127.0.0.1\", \"localhost\", \"::1\") and parts.port",
+    "replace": "parts.hostname.startswith((\"127.0.0.1\", \"localhost\")) and parts.port",
+    "note": "the host must match exactly, not by prefix"
+  },
+  {
+    "find": "urllib.request.ProxyHandler({})",
+    "replace": "urllib.request.ProxyHandler()",
+    "note": "the meter probe must ignore proxy settings"
+  },
+  {
+    "find": "    except ValueError:\n        return False",
+    "replace": "    except ValueError:\n        return True",
+    "note": "an unparseable URL is not the meter"
   }
 ]

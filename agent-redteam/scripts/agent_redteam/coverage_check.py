@@ -70,8 +70,8 @@ def coverage(raw: Mapping[str, Any]) -> list[FieldCoverage]:
         if field in NULL_MEANS_SKIP:
             status = "skipped_by_design" if (not present or value is None) else ("flags_everything" if value == [] else "configured")
         elif field in HAS_DEFAULT:
-            status = "configured" if present else "not_configured"
-            if present and field in NEEDS_SOURCE and not str(raw.get(NEEDS_SOURCE[field]) or "").strip():
+            status = "configured" if present and value is not None else "not_configured"   # `null` = left out
+            if status == "configured" and field in NEEDS_SOURCE and not str(raw.get(NEEDS_SOURCE[field]) or "").strip():
                 status = "configured_unexplained"
         else:
             status = "configured" if present and value else "not_configured"

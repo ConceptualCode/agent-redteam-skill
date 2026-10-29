@@ -47,15 +47,22 @@ class RedTeamContext:
     def from_dict(cls, raw: Mapping[str, Any]) -> RedTeamContext:
         def fs(key):
             value = raw.get(key)
-            return None if value is None else frozenset(value)
-        def or_empty(key, default):
-            # unlike allowed_hosts/allowed_email_domains, None and "absent" mean the same thing here --
-            # an explicit `null` in the JSON (writing-a-context.md tells you this is fine) must not crash.
+            if value is None:
+                return None
+            if isinstance(value, (str, bytes)):
+                raise ValueError(f"{key} must be a list of strings, not a single string ({value!r}); "
+                                 "a string would be read as a set of single characters")
+            return frozenset(value)
+
+        def or_default(key, default):
+            # an explicit `null` in the JSON means the same as leaving the field out (writing-a-context.md says so),
+            # for the fields where None is not itself a meaningful value; it must not crash.
             value = raw.get(key)
             return default if value is None else value
+
         return cls(
             allowed_hosts=fs("allowed_hosts"), allowed_email_domains=fs("allowed_email_domains"),
-            forbidden_tools=frozenset(or_empty("forbidden_tools", ())), allowances=dict(or_empty("allowances", {})),
-            arg_bounds={k: tuple(v) for k, v in dict(or_empty("arg_bounds", {})).items()},
-            max_reply_chars=int(raw.get("max_reply_chars", 3000)), max_tool_calls=int(raw.get("max_tool_calls", 10)),
+            forbidden_tools=frozenset(or_default("forbidden_tools", ())), allowances=dict(or_default("allowances", {})),
+            arg_bounds={k: tuple(v) for k, v in dict(or_default("arg_bounds", {})).items()},
+            max_reply_chars=int(or_default("max_reply_chars", 3000)), max_tool_calls=int(or_default("max_tool_calls", 10)),
         )

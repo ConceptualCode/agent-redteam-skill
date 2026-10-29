@@ -44,8 +44,8 @@ def test_estimate_test_count_matches_promptfoos_documented_formula():
 def test_build_config_writes_the_target_bridge_and_redteam_sections(tmp_path):
     text = build_config(python_target("provider.py"), "context.json", ["bola"], ["basic"], "a shop assistant",
                         "assert_bridge.py", num_tests=3, catalog=_catalog(tmp_path))
-    assert "providers:\n  - id: file://provider.py" in text
-    assert "value: file://assert_bridge.py" in text and "context_file: context.json" in text
+    assert 'providers:\n  - id: "file://provider.py"' in text
+    assert 'value: "file://assert_bridge.py"' in text and 'context_file: "context.json"' in text
     assert "numTests: 3" in text and "- bola" in text and "- basic" in text
     assert "purpose: \"a shop assistant\"" in text
 
@@ -53,7 +53,7 @@ def test_build_config_writes_the_target_bridge_and_redteam_sections(tmp_path):
 def test_build_config_wires_an_http_target_and_defaults_strategies_to_basic(tmp_path):
     text = build_config(http_target("http://127.0.0.1:8799/"), "context.json", ["bola"], [], "p",
                         "assert_bridge.py", catalog=_catalog(tmp_path))
-    assert "id: https" in text and "url: http://127.0.0.1:8799/" in text
+    assert "id: https" in text and 'url: "http://127.0.0.1:8799/"' in text
     assert "    - basic" in text  # no strategies given -- defaults to the no-op baseline, not an empty list
 
 
@@ -158,3 +158,27 @@ def test_build_config_adds_the_canary_assertion_beside_the_bridge_only_when_aske
     with_canary = build_config(**base, canary_path="/scripts/assert_canary.py")
     assert with_canary.count("- type: python") == 2
     assert with_canary.index("/b.py") < with_canary.index("/scripts/assert_canary.py") < with_canary.index("redteam:")
+
+
+def test_paths_and_urls_with_spaces_colons_or_hashes_are_quoted_so_the_yaml_survives(tmp_path):
+    awkward = "/home/me/My Project #2: v1/assert_bridge.py"
+    text = build_config(python_target("/p/My Project #2/provider.py"), "/p/ctx: a.json", ["bola"], ["basic"], "p",
+                        awkward, catalog=_catalog(tmp_path), canary_path="/p/Canary #1/assert_canary.py")
+    assert json.dumps("file://" + awkward) in text and json.dumps("/p/ctx: a.json") in text
+    assert json.dumps("file:///p/My Project #2/provider.py") in text and json.dumps("file:///p/Canary #1/assert_canary.py") in text
+    url = build_config(http_target("http://h:1/a b#c"), "c.json", ["bola"], [], "p", "b.py", catalog=_catalog(tmp_path))
+    assert 'url: "http://h:1/a b#c"' in url
+
+
+def test_strategies_that_go_remote_only_when_remote_generation_is_on_need_the_reply_approval_then():
+    for s in ("crescendo", "goat", "jailbreak:tree"):
+        assert "--remote" not in redteam_run_args("c.yaml", ["basic", s], remote_replies_approved=False)   # local when it is off
+        with pytest.raises(ValueError, match="explicit approval"):
+            redteam_run_args("c.yaml", ["basic", s], remote_replies_approved=False, remote_generation_enabled=True)
+        with pytest.raises(ValueError, match="explicit approval"):
+            redteam_generate_args("c.yaml", "o.yaml", [s], False, remote_generation_enabled=True)
+        with pytest.raises(ValueError, match="explicit approval"):
+            redteam_eval_args("g.yaml", [s], False, remote_generation_enabled=True)
+        # approved: allowed, and --remote is still not forced (only the always-remote strategies force it)
+        assert "--remote" not in redteam_run_args("c.yaml", [s], True, remote_generation_enabled=True)
+    assert redteam_run_args("c.yaml", ["basic", "jailbreak-templates"], False, remote_generation_enabled=True)

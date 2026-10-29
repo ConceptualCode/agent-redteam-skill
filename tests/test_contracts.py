@@ -28,3 +28,16 @@ def test_context_from_dict_applies_defaults_and_converts_types():
 def test_context_from_dict_treats_an_explicit_null_the_same_as_omitting_the_field():
     c = RedTeamContext.from_dict({"forbidden_tools": None, "allowances": None, "arg_bounds": None})
     assert c.forbidden_tools == frozenset() and c.allowances == {} and c.arg_bounds == {}
+
+
+def test_an_explicit_null_for_a_limit_means_the_default_not_a_crash():
+    ctx = RedTeamContext.from_dict({"max_reply_chars": None, "max_tool_calls": None})
+    assert ctx.max_reply_chars == 3000 and ctx.max_tool_calls == 10
+
+
+def test_a_string_where_a_list_belongs_is_refused_not_split_into_characters():
+    import pytest
+    for key in ("allowed_hosts", "allowed_email_domains"):
+        with pytest.raises(ValueError, match=key):
+            RedTeamContext.from_dict({key: "example.com"})
+    assert RedTeamContext.from_dict({"allowed_hosts": ["example.com"]}).allowed_hosts == frozenset({"example.com"})

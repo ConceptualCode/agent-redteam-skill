@@ -1,27 +1,32 @@
 [
- {
-  "find": "status = \"skipped_by_design\" if (not present or value is None) else (\"flags_everything\" if value == [] else \"configured\")",
-  "replace": "status = \"configured\"",
-  "note": "allowed_hosts/allowed_email_domains always report configured, regardless of shape"
- },
- {
-  "find": "status = \"configured\" if present else \"not_configured\"",
-  "replace": "status = \"not_configured\"",
-  "note": "max_reply_chars/max_tool_calls never report configured even when explicitly set"
- },
- {
-  "find": "status = \"configured\" if present and value else \"not_configured\"",
-  "replace": "status = \"configured\" if present else \"not_configured\"",
-  "note": "an explicitly empty list/dict counted as configured"
- },
- {
-  "find": "gaps = [r.detector for r in rows if r.status == \"not_configured\"]",
-  "replace": "gaps = []",
-  "note": "gaps never surfaced in the formatted report"
- },
- {
-  "find": "return 1 if any(r.status == \"flags_everything\" for r in rows) else 0",
-  "replace": "return 0",
-  "note": "the command line never exits nonzero for a dangerous empty allow-list"
- }
+  {
+    "find": "status = \"skipped_by_design\" if (not present or value is None) else (\"flags_everything\" if value == [] else \"configured\")",
+    "replace": "status = \"configured\"",
+    "note": "allowed_hosts/allowed_email_domains always report configured, regardless of shape"
+  },
+  {
+    "find": "status = \"configured\" if present and value is not None else \"not_configured\"",
+    "replace": "status = \"not_configured\"",
+    "note": "max_reply_chars/max_tool_calls never report configured even when explicitly set"
+  },
+  {
+    "find": "status = \"configured\" if present and value else \"not_configured\"",
+    "replace": "status = \"configured\" if present else \"not_configured\"",
+    "note": "an explicitly empty list/dict counted as configured"
+  },
+  {
+    "find": "gaps = [r.detector for r in rows if r.status == \"not_configured\"]",
+    "replace": "gaps = []",
+    "note": "gaps never surfaced in the formatted report"
+  },
+  {
+    "find": "return 1 if any(r.status == \"flags_everything\" for r in rows) else 0",
+    "replace": "return 0",
+    "note": "the command line never exits nonzero for a dangerous empty allow-list"
+  },
+  {
+    "find": "status = \"configured\" if present and value is not None else \"not_configured\"",
+    "replace": "status = \"configured\" if present else \"not_configured\"",
+    "note": "a null limit is not configured"
+  }
 ]

@@ -70,3 +70,8 @@ def test_the_command_line_prints_coverage_and_exits_nonzero_only_on_a_dangerous_
     f.write_text(json.dumps({"allowed_hosts": []}))
     monkeypatch.setattr(sys, "argv", ["x", str(f)])
     assert cc.main() == 1
+
+
+def test_a_null_limit_counts_as_not_configured_like_a_missing_one():
+    rows = {r.field: r.status for r in coverage({"max_reply_chars": None, "max_tool_calls": None})}
+    assert rows["max_reply_chars"] == "not_configured" and rows["max_tool_calls"] == "not_configured"

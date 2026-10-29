@@ -10,7 +10,7 @@
     "note": "strategies and languages dropped from the test-count formula"
   },
   {
-    "find": "return f\"providers:\\n  - id: file://{target.value}\\n\"",
+    "find": "return f\"providers:\\n  - id: {json.dumps('file://' + target.value)}\\n\"",
     "replace": "return f\"providers:\\n  - id: {target.value}\\n\"",
     "note": "python target missing its file:// scheme"
   },
@@ -40,7 +40,7 @@
     "note": "basic counted as an extra wrapper in the test count"
   },
   {
-    "find": "canary_block = f\"    - type: python\\n      value: file://{canary_path}\\n\" if canary_path else \"\"",
+    "find": "canary_block = f\"    - type: python\\n      value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"",
     "replace": "canary_block = \"\"",
     "note": "the canary assertion is never written into the config"
   },
@@ -60,12 +60,12 @@
     "note": "the given binary must be used"
   },
   {
-    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"generate\"",
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)\n    args = [promptfoo, \"redteam\", \"generate\"",
     "replace": "    needs = strategies_sending_replies_remote(strategies)\n    args = [promptfoo, \"redteam\", \"generate\"",
     "note": "generate skipped the approval check for adaptive strategies"
   },
   {
-    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"eval\"",
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)\n    args = [promptfoo, \"redteam\", \"eval\"",
     "replace": "    needs = strategies_sending_replies_remote(strategies)\n    args = [promptfoo, \"redteam\", \"eval\"",
     "note": "eval skipped the approval check for adaptive strategies"
   },
@@ -78,5 +78,55 @@
     "find": "{shlex.quote(config_dir)}",
     "replace": "{config_dir}",
     "note": "view command paths must be quoted"
+  },
+  {
+    "find": "f\"      value: {json.dumps('file://' + bridge_path)}",
+    "replace": "f\"      value: file://{bridge_path}",
+    "note": "the bridge path must be quoted"
+  },
+  {
+    "find": "context_file: {json.dumps(context_file)}",
+    "replace": "context_file: {context_file}",
+    "note": "the context path must be quoted"
+  },
+  {
+    "find": "value: {json.dumps('file://' + canary_path)}",
+    "replace": "value: file://{canary_path}",
+    "note": "the canary path must be quoted"
+  },
+  {
+    "find": "url: {json.dumps(target.value)}",
+    "replace": "url: {target.value}",
+    "note": "the URL must be quoted"
+  },
+  {
+    "find": "return f\"providers:\\n  - id: {json.dumps('file://' + target.value)}\\n\"",
+    "replace": "return f\"providers:\\n  - id: file://{target.value}\\n\"",
+    "note": "the provider path must be quoted"
+  },
+  {
+    "find": "REMOTE_WHEN_ENABLED: frozenset[str] = frozenset({\"crescendo\", \"goat\", \"jailbreak:tree\"})",
+    "replace": "REMOTE_WHEN_ENABLED: frozenset[str] = frozenset({\"crescendo\", \"goat\"})",
+    "note": "jailbreak:tree also goes remote when enabled"
+  },
+  {
+    "find": "maybe = [s for s in strategies if remote_generation_enabled and s in REMOTE_WHEN_ENABLED]",
+    "replace": "maybe = [s for s in strategies if s in REMOTE_WHEN_ENABLED]",
+    "note": "these only count when remote generation is enabled"
+  },
+  {
+    "find": "maybe = [s for s in strategies if remote_generation_enabled and s in REMOTE_WHEN_ENABLED]",
+    "replace": "maybe = []",
+    "note": "these must need approval when remote generation is on"
+  },
+  {
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)\n    args = [promptfoo, \"redteam\", \"generate\"",
+    "replace": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"generate\"",
+    "note": "generate must pass remote_generation_enabled through"
+  },
+  {
+    "find": "    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)\n    args = [promptfoo, \"redteam\", \"eval\"",
+    "replace": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"eval\"",
+    "note": "eval must pass remote_generation_enabled through"
   }
 ]

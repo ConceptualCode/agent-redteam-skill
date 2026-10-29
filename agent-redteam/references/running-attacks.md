@@ -78,7 +78,9 @@ time with "requires remote generation" otherwise, after generation has already s
 say plainly it is less adaptive. If the developer wants the adaptive one, tell them replies will leave the machine, get an
 explicit yes, then use the helpers with `remote_replies_approved=True` (adds `--remote`; they raise without approval). Don't add
 `--remote` on your own and don't drop the strategy silently. `strategies_sending_replies_remote()` lists which chosen strategies
-need it. Calls the remote attacker makes don't pass through the local meter, which caps only the target and the local grader; say
+need it. `crescendo`, `goat` and `jailbreak:tree` are different: they run locally unless remote generation is on, and take PromptFoo's
+servers when it is. So if you approved remote generation for any plugin of the run, pass `remote_generation_enabled=True` to the
+helpers; they then also require the reply approval for these three (or drop them from that run). Calls the remote attacker makes don't pass through the local meter, which caps only the target and the local grader; say
 so when giving the budget.
 
 ## Path B: hand-written attacks
@@ -127,7 +129,7 @@ often older than 22.22, and a bare `promptfoo view` then fails. Run it once to c
 enable PromptFoo's sharing (`PROMPTFOO_DISABLE_SHARING` stays on): it uploads the results.
 
 **Before keeping or sharing that folder**, run `python -m agent_redteam.secret_scan --env OPENAI_API_KEY <results folder> REPORT.md`
-(names only, never the value). A hit means the key leaked: say so first in the report, tell the developer to rotate it, and
+(names only, never the value; exit 1 on a hit, and exit 2 if a named variable was not set, because then nothing was checked for it). A hit means the key leaked: say so first in the report, tell the developer to rotate it, and
 redact the files. Starting the meter with `--key-env` (SKILL.md step 4) is what keeps it out in the first place.
 
 ## Reading `summarize` output

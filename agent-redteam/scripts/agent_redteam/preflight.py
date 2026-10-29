@@ -12,6 +12,7 @@ import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .pricing import Prices
 
@@ -40,8 +41,21 @@ def _run(cmd: list[str]) -> str:
 
 
 def _http_get(url: str) -> str:
-    with urllib.request.urlopen(url, timeout=3) as resp:
+    # No proxies: the meter is on this machine, and an HTTP_PROXY set without NO_PROXY would send the probe elsewhere
+    # and report a running meter as not running.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(url, timeout=3) as resp:
         return resp.read().decode()
+
+
+def _points_at_meter(base_url: str, meter_port: int) -> bool:
+    """True only if the URL's host is this machine and its port is the meter's. A prefix test would accept
+    `http://localhost.example.com` or another service on a different local port."""
+    try:
+        parts = urlsplit(base_url)
+        return parts.scheme == "http" and parts.hostname in ("127.0.0.1", "localhost", "::1") and parts.port == meter_port
+    except ValueError:
+        return False
 
 
 def _find_local_promptfoo(project: str | None = None) -> Path | None:
@@ -104,7 +118,7 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
             out.append(Check(f"price for {model}", "fail", "no price listed; the meter would refuse it", "add it to prices.json"))
 
     base = env.get("OPENAI_BASE_URL", "")
-    routed = base.startswith(("http://127.0.0.1", "http://localhost"))
+    routed = _points_at_meter(base, meter_port)
     out.append(Check("calls go through the meter", "ok" if routed else "warn", base or "OPENAI_BASE_URL is not set",
                      "" if routed else f"export OPENAI_BASE_URL=http://127.0.0.1:{meter_port}/v1 so the spend cap applies"))
     try:

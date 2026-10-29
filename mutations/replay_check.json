@@ -35,8 +35,8 @@
     "note": "a result without grading must not crash"
   },
   {
-    "find": "        if r.get(\"agent_error\"):\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
-    "replace": "        if r[\"oracle\"]:\n            d[\"confirmed\"] += 1\n        elif r.get(\"agent_error\"):\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
+    "find": "        if r.get(\"agent_error\") or r[\"oracle\"] is None:\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
+    "replace": "        if r[\"oracle\"]:\n            d[\"confirmed\"] += 1\n        elif r.get(\"agent_error\") or r[\"oracle\"] is None:\n            d[\"inconclusive\"] += 1\n        elif r[\"oracle\"]:",
     "note": "an errored run must never count as confirmed"
   },
   {
@@ -58,5 +58,15 @@
     "find": "\"tools\": [t[\"name\"] for t in md.get(\"tools\", [])]",
     "replace": "\"tools\": []",
     "note": "the tools used must be recorded"
+  },
+  {
+    "find": "if r.get(\"agent_error\") or r[\"oracle\"] is None:",
+    "replace": "if r.get(\"agent_error\"):",
+    "note": "a missing oracle is inconclusive, not nothing found"
+  },
+  {
+    "find": "\"oracle\": md.get(\"oracle\"),",
+    "replace": "\"oracle\": md.get(\"oracle\", []),",
+    "note": "a missing oracle must be recorded as missing"
   }
 ]

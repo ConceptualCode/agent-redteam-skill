@@ -107,8 +107,9 @@ They test the *test*, not the agent; each was written after observing the failur
   Anthropic). A model with no price raises `KeyError`, so nothing is ever spent unmeasured.
 - **`meter.py`**: a local reverse proxy in front of an OpenAI- or Anthropic-shaped API (standard library only). Neither provider's
   tooling, PromptFoo included, has a hard spend cap. It prices every call from real token usage, hard-refuses (`429`) once the budget is
-  spent, and logs JSONL. A call already in flight can land a few cents over, and a timed-out upstream call may still be billed; both are
-  logged, not hidden. It only caps traffic that goes through it, and PromptFoo's remote generation does not.
+  spent, and logs JSONL. A call already in flight can land a few cents over, a timed-out or cut-off upstream call may still be billed, and a 200
+  whose usage cannot be read is billed upstream but counted as $0; all three are logged and the last is counted as `unpriced` in
+  `/_meter`, not hidden. It only caps traffic that goes through it, and PromptFoo's remote generation does not.
 - **`--key-env NAME`**: the meter reads the real key from its own environment and puts it on every upstream call, dropping whatever the
   caller sent. The agent under test gets a throwaway token. This exists because an agent with a shell can print its environment: in one
   real run the key was forwarded into the agent's container, printed by an attack, and ended up in the saved results, PromptFoo's database
