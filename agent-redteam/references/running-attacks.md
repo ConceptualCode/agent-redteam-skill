@@ -18,7 +18,7 @@
 2. **Propose a plugin and strategy list with reasoning**, and say plainly which groups you leave out and why. Always include
    the baseline (`excessive-agency`, `prompt-extraction`, `hijacking`) regardless of domain.
    **Then ask which chosen plugins can only generate on PromptFoo's servers**: `Catalog.load().needs_remote_generation(plugins)`
-   (read from the installed PromptFoo's own source, 93 ids in 0.123.1: `hijacking`, `ssrf`, `bola`, `bfla`, `mcp`, `data-exfil`,
+   (read from the installed PromptFoo's own source and recorded in the catalog: `hijacking`, `ssrf`, `bola`, `bfla`, `mcp`, `data-exfil`,
    `system-prompt-override`, all of `coding-agent:*`, and the vertical families such as `ecommerce:*` and `medical:*`; not
    `shell-injection`, `tool-discovery`, `debug-access`, `excessive-agency`, `prompt-extraction`). With remote generation off they
    produce zero tests or fail outright, with no local fallback. For each such plugin the developer either approves sending the

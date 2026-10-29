@@ -1,6 +1,6 @@
 # Honesty checks
 
-These four don't test the agent -- they test the *test*. Each one closes a specific way a red-team result can look clean while meaning nothing. Run the relevant one before reporting any "held" result as real, not after something already looks suspicious -- by the time a result looks obviously wrong, it's often too late to tell whether it was ever right.
+These five don't test the agent -- they test the *test*. Each one closes a specific way a red-team result can look clean while meaning nothing. Run the relevant one before reporting any "held" result as real, not after something already looks suspicious -- by the time a result looks obviously wrong, it's often too late to tell whether it was ever right.
 
 ## `shape_check.py` -- does the fake data look like the real thing?
 
