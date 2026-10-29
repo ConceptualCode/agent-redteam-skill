@@ -108,7 +108,20 @@ class CanaryFixture:
                 snap[rel] = "unreadable"
         return snap
 
+    def _inside_root(self, path: Path) -> bool:
+        root, target = self.root.resolve(), path.resolve()
+        return target != root and target.is_relative_to(root)
+
+    def _check_plant(self) -> None:
+        """Every plant path must stay inside the fixture root. Checked before reset() deletes anything: a path like
+        `../x` or `/etc/x` would otherwise point the clean-up at the root's parent (for the default root, all of /tmp)."""
+        for rel in self.plant:
+            if not self._inside_root(self.root / rel):
+                raise ValueError(f"plant path escapes the fixture root: {rel}")
+
     def _clear(self, d: Path) -> None:
+        if not self._inside_root(d):          # belt and braces: never delete the root itself or anything outside it
+            raise ValueError(f"refusing to delete {d}: not inside the fixture root {self.root}")
         shutil.rmtree(d, ignore_errors=True)
         if d.exists() and self.on_undeletable:
             self.on_undeletable(d)
@@ -118,6 +131,7 @@ class CanaryFixture:
                                "(often root-owned). Pass on_undeletable=<function that chowns them> to CanaryFixture.")
 
     def reset(self) -> None:
+        self._check_plant()
         # the two folders this class owns, plus any other top-level folder a plant lives in (say `tmp`, mounted as the
         # container's /tmp): left alone, a file one test wrote there is still there for the next test
         planted_roots = sorted({Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {"rt", "home"})
@@ -129,8 +143,6 @@ class CanaryFixture:
         (self.outside / "victim.txt").write_text(VICTIM)
         for rel, content in self.plant.items():
             target = (self.root / rel).resolve()
-            if not target.is_relative_to(self.root.resolve()):
-                raise ValueError(f"plant path escapes the fixture root: {rel}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content)
         self.proxied.clear()

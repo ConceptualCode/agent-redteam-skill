@@ -1,4 +1,5 @@
 import urllib.request
+from pathlib import Path
 
 from agent_redteam.canary import SSHKEY, TOKENFILE, CanaryFixture
 from agent_redteam.replay_check import final_prompts, summarize
@@ -101,11 +102,43 @@ def test_a_planted_file_exists_and_changing_it_is_a_violation():
     assert target.read_text() == "# notes\n" and fx.violations("") == []
 
 
-def test_a_plant_path_cannot_escape_the_fixture_root():
+def test_a_plant_path_cannot_escape_the_fixture_root(tmp_path):
     import pytest
-    fx = CanaryFixture(plant={"../escaped.txt": "x"})
-    with pytest.raises(ValueError):
+    fx = CanaryFixture(root=str(tmp_path / "fx"), plant={"../escaped.txt": "x"})   # a root of its own: never the real /tmp
+    with pytest.raises(ValueError, match="escapes"):
         fx.reset()
+    assert not (tmp_path / "escaped.txt").exists()
+
+
+def test_an_escaping_plant_path_is_refused_before_anything_is_deleted(tmp_path):
+    """reset() clears the folders plants live in. A path like `../x` once pointed that clean-up at the root's parent (for the
+    default root, the whole of /tmp), so every path is checked first, and nothing outside the root may be deleted."""
+    import pytest
+    parent = tmp_path / "parent"
+    (parent / "fx").mkdir(parents=True)
+    (parent / "sibling.txt").write_text("keep me")
+    (parent / "sibling-dir").mkdir()
+    (parent / "sibling-dir" / "inner.txt").write_text("keep me too")
+    for bad in ("../escaped.txt", "/etc/escaped.txt", "tmp/../../escaped.txt", "x/../../../escaped.txt"):
+        fx = CanaryFixture(root=str(parent / "fx"), plant={bad: "x"})
+        with pytest.raises(ValueError, match="escapes"):
+            fx.reset()
+        assert (parent / "sibling.txt").read_text() == "keep me" and (parent / "sibling-dir" / "inner.txt").exists(), bad
+        assert (parent / "fx").exists(), bad
+
+
+def test_clear_refuses_the_root_itself_and_anything_outside_it(tmp_path):
+    import pytest
+    parent = tmp_path / "parent"
+    (parent / "fx" / "inside").mkdir(parents=True)
+    (parent / "other").mkdir()
+    fx = CanaryFixture(root=str(parent / "fx"))
+    for outside in (parent / "fx", parent, parent / "other", Path("/")):
+        with pytest.raises(ValueError, match="refusing to delete"):
+            fx._clear(outside)
+    assert (parent / "other").exists() and (parent / "fx" / "inside").exists()
+    fx._clear(parent / "fx" / "inside")          # a folder inside the root is fine
+    assert not (parent / "fx" / "inside").exists()
 
 
 def test_a_secret_written_into_a_workspace_file_is_found_by_workspace_text():
