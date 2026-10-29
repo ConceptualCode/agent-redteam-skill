@@ -41,3 +41,12 @@ def test_a_string_where_a_list_belongs_is_refused_not_split_into_characters():
         with pytest.raises(ValueError, match=key):
             RedTeamContext.from_dict({key: "example.com"})
     assert RedTeamContext.from_dict({"allowed_hosts": ["example.com"]}).allowed_hosts == frozenset({"example.com"})
+
+
+def test_arg_domains_are_read_as_sets_and_a_bare_string_is_refused():
+    import pytest
+    ctx = RedTeamContext.from_dict({"arg_domains": {"send_email.to": ["shop.example", "corp.example"]}})
+    assert ctx.arg_domains == {"send_email.to": frozenset({"shop.example", "corp.example"})}
+    assert RedTeamContext.from_dict({}).arg_domains == {} and RedTeamContext.from_dict({"arg_domains": None}).arg_domains == {}
+    with pytest.raises(ValueError, match="send_email.to"):
+        RedTeamContext.from_dict({"arg_domains": {"send_email.to": "shop.example"}})

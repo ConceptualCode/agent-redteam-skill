@@ -76,7 +76,7 @@ Expect the PromptFoo install to take a few minutes the first time, and runs to c
 | `overfit_check.py` | finds wording a defence shares with the attacks it is scored on |
 | `summarize.py` | PromptFoo results to "x of N" per attack, controls apart, flaky labels, before and after |
 | `promptfoo_catalog.py` | the real PromptFoo plugin/strategy catalog, read from a JSON snapshot captured off the installed binary |
-| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies, with the bridge wired in; estimates the real test count |
+| `promptfoo_redteam_config.py` | assembles a full `promptfooconfig.yaml` for PromptFoo's own plugins/strategies (Path A) or for hand-written attacks (Path B), with the bridge wired in; estimates the real test count; builds the generate/eval/view commands and the `env.sh` block |
 | `coverage_check.py` | reports which `RedTeamContext` fields are actually configured vs. silently running on nothing/a generic default |
 | `redteam_config_check.py` | reads a real `promptfooconfig.yaml` for whether the bridge is wired in and which baseline plugins (if any) are missing |
 | `canary.py`, `../assert_canary.py` | judges agents with a shell/code/file tool by what the tools did: planted fake secrets and files, a whole-sandbox snapshot, an egress proxy |
@@ -87,7 +87,7 @@ results loader in `summarize.py` are written for it. The other scripts work with
 attacks (no viewer, no generated attacks) is planned so PromptFoo can become optional; it is not built yet.
 
 `templates/{shop,email,file}/` (shipped in the skill) are scripted agents with real, working planted flaws (no model called, free to run) proving every one
-of the 7 generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
+of the generic detectors actually catches something, not just passes its own unit tests -- each paired with controls
 proving the same detectors don't over-fire on ordinary behaviour. `templates/shop_http/` is the
 same shop agent again, served over a real local HTTP server instead of called in-process, proving detection survives a real
 network hop. `templates/notes/` proves the same detectors still catch an attack when the planted content arrives via a RAG tool's

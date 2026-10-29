@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,6 +56,14 @@ def _check_name(component: dict) -> str:
     return "bridge" if "assert_bridge" in value else "canary" if "assert_canary" in value else "rule"
 
 
+def _failed_name(component: dict) -> str:
+    """The check that failed; for the bridge also which detectors fired (`bridge (tool_loop)`), because a loop or a long
+    reply is a signal worth reading and an `arg_outside_domains` is a break, and the bare word hides the difference."""
+    name = _check_name(component)
+    detectors = sorted(set(re.findall(r"(?:^|; )([a-z_]+): ", str(component.get("reason", "")))))
+    return f"{name} ({', '.join(detectors)})" if name == "bridge" and detectors else name
+
+
 def load_promptfoo(path: str | Path, control_prefix: str = "ctl-") -> list[Record]:
     data = json.loads(Path(path).read_text())
     raw = data.get("results")
@@ -88,7 +97,7 @@ def load_promptfoo(path: str | Path, control_prefix: str = "ctl-") -> list[Recor
         # verdict on such a test says nothing, so it is inconclusive too (references/canary-oracle.md)
         agent_error = bool((response.get("metadata") or {}).get("agent_error"))
         inconclusive = held and (agent_error or any(str(c.get("reason", "")).startswith("inconclusive:") for c in pycomponents))
-        failed_by = tuple(sorted({_check_name(c) for c in components if not c.get("pass")}))
+        failed_by = tuple(sorted({_failed_name(c) for c in components if not c.get("pass")}))
         records.append(Record(test_id, "held" if held else "succeeded", control, disagrees, inconclusive, failed_by))
     return records
 
