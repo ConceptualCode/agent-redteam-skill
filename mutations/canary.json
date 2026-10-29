@@ -58,5 +58,15 @@
     "find": "if left <= 0 or self._workspace_before.get(rel) == now[rel]:",
     "replace": "if left <= 0 or rel in self._workspace_before:",
     "note": "a planted file the agent changed must still be reported"
+  },
+  {
+    "find": "for d in (self.runtime, self.outside, *(self.root / top for top in planted_roots)):",
+    "replace": "for d in (self.runtime, self.outside):",
+    "note": "a plant folder outside rt and home must be cleared between tests"
+  },
+  {
+    "find": "{Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {\"rt\", \"home\"}",
+    "replace": "{p for p in (\"other\",)} | {Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {\"rt\", \"home\"}",
+    "note": "only folders a plant lives in are cleared, never other folders"
   }
 ]

@@ -186,3 +186,19 @@ def test_a_hook_that_does_not_help_still_raises(monkeypatch):
     _stuck_rmtree(monkeypatch, {"yes": False})
     with pytest.raises(RuntimeError, match="cannot remove"):
         fx.reset()
+
+
+def test_reset_also_clears_a_plant_folder_outside_rt_and_home_such_as_a_mounted_tmp():
+    fx = CanaryFixture(plant={"tmp/.keep": ""}); fx.reset()
+    (fx.root / "tmp" / "diagnostics").mkdir()
+    (fx.root / "tmp" / "diagnostics" / "test-run.log").write_text("written by test 1")
+    fx.reset()
+    assert not (fx.root / "tmp" / "diagnostics").exists() and (fx.root / "tmp" / ".keep").exists()
+    assert fx.violations("") == []     # nothing carried over, so the next test starts from the same world
+
+
+def test_reset_leaves_folders_no_plant_lives_in_alone():
+    fx = CanaryFixture(plant={"tmp/.keep": ""}); fx.reset()
+    (fx.root / "other").mkdir(); (fx.root / "other" / "mine.txt").write_text("not the fixture's")
+    fx.reset()
+    assert (fx.root / "other" / "mine.txt").exists()

@@ -1,132 +1,147 @@
 [
- {
-  "find": "if from_var:\n        return str(from_var)",
-  "replace": "if False:\n        return str(from_var)",
-  "note": "attack_id var ignored"
- },
- {
-  "find": "return str(description).split(\" (\")[0]",
-  "replace": "return str(description)",
-  "note": "description suffix kept in the id"
- },
- {
-  "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
-  "replace": "if False:",
-  "note": "missing output not treated as an error"
- },
- {
-  "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
-  "replace": "if not response.get(\"output\"):",
-  "note": "metadata-only responses treated as errors"
- },
- {
-  "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
-  "replace": "held = bool(r.get(\"success\"))",
-  "note": "our rule no longer decides"
- },
- {
-  "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
-  "replace": "held = any(rule) if rule else bool(r.get(\"success\"))",
-  "note": "one passing python assertion is enough, even if another failed"
- },
- {
-  "find": "disagrees = bool(rule and grader and any(g != held for g in grader))",
-  "replace": "disagrees = False",
-  "note": "disagreements never counted"
- },
- {
-  "find": "any(g != held for g in grader)",
-  "replace": "held != grader[0]",
-  "note": "a second grader's disagreement dropped again"
- },
- {
-  "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
-  "replace": "inconclusive = agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
-  "note": "a failed attack can be marked inconclusive too"
- },
- {
-  "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
-  "replace": "inconclusive = held",
-  "note": "every held result marked inconclusive, not just ones that say so"
- },
- {
-  "find": "\"inconclusive\": sum(r.inconclusive for r in rs),",
-  "replace": "\"inconclusive\": 0,",
-  "note": "inconclusive count never reaches the table"
- },
- {
-  "find": "+ [f\" {r['inconclusive']} inconclusive (never reached / agent error)\"] * bool(r[\"inconclusive\"])",
-  "replace": "",
-  "note": "inconclusive count not shown in the formatted table"
- },
- {
-  "find": "control = test_id.startswith(control_prefix) or bool(",
-  "replace": "control = bool(",
-  "note": "control prefix ignored"
- },
- {
-  "find": "or bool(((r.get(\"testCase\") or {}).get(\"metadata\") or {}).get(\"control\"))",
-  "replace": "",
-  "note": "control metadata flag ignored"
- },
- {
-  "find": "runs = sum(r.status != \"error\" for r in rs)",
-  "replace": "runs = len(rs)",
-  "note": "errors counted as runs"
- },
- {
-  "find": "\"flaky\": 0 < succeeded < runs",
-  "replace": "\"flaky\": succeeded < runs",
-  "note": "zero successes labelled flaky"
- },
- {
-  "find": "return sorted(rows, key=lambda row: (row[\"control\"], row[\"id\"]))",
-  "replace": "return sorted(rows, key=lambda row: row[\"id\"])",
-  "note": "controls not listed after attacks"
- },
- {
-  "find": "rate_x, rate_y = x[\"succeeded\"] / max(x[\"runs\"], 1), y[\"succeeded\"] / max(y[\"runs\"], 1)",
-  "replace": "rate_x, rate_y = x[\"succeeded\"], y[\"succeeded\"]",
-  "note": "compared by count, not rate"
- },
- {
-  "find": "(\"better\" if rate_y < rate_x else \"worse\")",
-  "replace": "(\"worse\" if rate_y < rate_x else \"better\")",
-  "note": "better and worse swapped"
- },
- {
-  "find": "change = \"new\" if x is None else \"gone\"",
-  "replace": "change = \"gone\" if x is None else \"new\"",
-  "note": "new and gone swapped"
- },
- {
-  "find": "raw.get(\"results\", []) if isinstance(raw, dict) else (raw or [])",
-  "replace": "raw.get(\"results\", [])",
-  "note": "plain results list not read"
- },
- {
-  "find": "return sorted(out, key=lambda row: (row[\"control\"], row[\"id\"]))",
-  "replace": "return sorted(out, key=lambda row: row[\"id\"])",
-  "note": "comparison does not list controls after attacks"
- },
- {
-  "find": "(agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
-  "replace": "any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
-  "note": "an agent error does not make a held result inconclusive"
- },
- {
-  "find": "return f\"{meta['pluginId']} [{meta.get('strategyId') or 'basic'}] #{index}\"",
-  "replace": "return f\"test-{index}\"",
-  "note": "red-team tests are named by position, not plugin"
- },
- {
-  "find": "+ [f\" failed by: {', '.join(r['failed_by'])}\"] * bool(r[\"failed_by\"] and r[\"succeeded\"]))",
-  "replace": ")",
-  "note": "which check caught an attack is not shown"
- },
- {
-  "find": "return \"bridge\" if \"assert_bridge\" in value else \"canary\" if \"assert_canary\" in value else \"rule\"",
-  "replace": "return \"rule\"",
-  "note": "every python check is labelled the same"
- }
+  {
+    "find": "if from_var:\n        return str(from_var)",
+    "replace": "if False:\n        return str(from_var)",
+    "note": "attack_id var ignored"
+  },
+  {
+    "find": "return str(description).split(\" (\")[0]",
+    "replace": "return str(description)",
+    "note": "description suffix kept in the id"
+  },
+  {
+    "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
+    "replace": "if False:",
+    "note": "missing output not treated as an error"
+  },
+  {
+    "find": "if not response.get(\"output\") and not response.get(\"metadata\"):",
+    "replace": "if not response.get(\"output\"):",
+    "note": "metadata-only responses treated as errors"
+  },
+  {
+    "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
+    "replace": "held = bool(r.get(\"success\"))",
+    "note": "our rule no longer decides"
+  },
+  {
+    "find": "held = all(rule) if rule else bool(r.get(\"success\"))",
+    "replace": "held = any(rule) if rule else bool(r.get(\"success\"))",
+    "note": "one passing python assertion is enough, even if another failed"
+  },
+  {
+    "find": "disagrees = bool(rule and grader and any(g != held for g in grader))",
+    "replace": "disagrees = False",
+    "note": "disagreements never counted"
+  },
+  {
+    "find": "any(g != held for g in grader)",
+    "replace": "held != grader[0]",
+    "note": "a second grader's disagreement dropped again"
+  },
+  {
+    "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
+    "replace": "inconclusive = agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+    "note": "a failed attack can be marked inconclusive too"
+  },
+  {
+    "find": "inconclusive = held and (agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
+    "replace": "inconclusive = held",
+    "note": "every held result marked inconclusive, not just ones that say so"
+  },
+  {
+    "find": "\"inconclusive\": sum(r.inconclusive for r in rs),",
+    "replace": "\"inconclusive\": 0,",
+    "note": "inconclusive count never reaches the table"
+  },
+  {
+    "find": "+ [f\" {r['inconclusive']} inconclusive (never reached / agent error)\"] * bool(r[\"inconclusive\"])",
+    "replace": "",
+    "note": "inconclusive count not shown in the formatted table"
+  },
+  {
+    "find": "control = test_id.startswith(control_prefix) or bool(",
+    "replace": "control = bool(",
+    "note": "control prefix ignored"
+  },
+  {
+    "find": "or bool(((r.get(\"testCase\") or {}).get(\"metadata\") or {}).get(\"control\"))",
+    "replace": "",
+    "note": "control metadata flag ignored"
+  },
+  {
+    "find": "runs = sum(r.status != \"error\" for r in rs)",
+    "replace": "runs = len(rs)",
+    "note": "errors counted as runs"
+  },
+  {
+    "find": "\"flaky\": 0 < succeeded < runs",
+    "replace": "\"flaky\": succeeded < runs",
+    "note": "zero successes labelled flaky"
+  },
+  {
+    "find": "return sorted(rows, key=lambda row: (row[\"control\"], row[\"id\"]))",
+    "replace": "return sorted(rows, key=lambda row: row[\"id\"])",
+    "note": "controls not listed after attacks"
+  },
+  {
+    "find": "rate_x, rate_y = x[\"succeeded\"] / max(x[\"runs\"], 1), y[\"succeeded\"] / max(y[\"runs\"], 1)",
+    "replace": "rate_x, rate_y = x[\"succeeded\"], y[\"succeeded\"]",
+    "note": "compared by count, not rate"
+  },
+  {
+    "find": "(\"better\" if rate_y < rate_x else \"worse\")",
+    "replace": "(\"worse\" if rate_y < rate_x else \"better\")",
+    "note": "better and worse swapped"
+  },
+  {
+    "find": "change = \"new\" if x is None else \"gone\"",
+    "replace": "change = \"gone\" if x is None else \"new\"",
+    "note": "new and gone swapped"
+  },
+  {
+    "find": "raw.get(\"results\", []) if isinstance(raw, dict) else (raw or [])",
+    "replace": "raw.get(\"results\", [])",
+    "note": "plain results list not read"
+  },
+  {
+    "find": "return sorted(out, key=lambda row: (row[\"control\"], row[\"id\"]))",
+    "replace": "return sorted(out, key=lambda row: row[\"id\"])",
+    "note": "comparison does not list controls after attacks"
+  },
+  {
+    "find": "(agent_error or any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents))",
+    "replace": "any(str(c.get(\"reason\", \"\")).startswith(\"inconclusive:\") for c in pycomponents)",
+    "note": "an agent error does not make a held result inconclusive"
+  },
+  {
+    "find": "return f\"{meta['pluginId']} [{meta.get('strategyId') or 'basic'}] #{index}\"",
+    "replace": "return f\"test-{index}\"",
+    "note": "red-team tests are named by position, not plugin"
+  },
+  {
+    "find": "+ [f\" failed by: {', '.join(r['failed_by'])}\"] * bool(r[\"failed_by\"] and r[\"succeeded\"]))",
+    "replace": ")",
+    "note": "which check caught an attack is not shown"
+  },
+  {
+    "find": "return \"bridge\" if \"assert_bridge\" in value else \"canary\" if \"assert_canary\" in value else \"rule\"",
+    "replace": "return \"rule\"",
+    "note": "every python check is labelled the same"
+  },
+  {
+    "find": "    return f\"{name} ({', '.join(detectors)})\" if name == \"bridge\" and detectors else name",
+    "replace": "    return name",
+    "note": "a bridge failure must name the detectors that fired"
+  },
+  {
+    "find": "    return f\"{name} ({', '.join(detectors)})\" if name == \"bridge\" and detectors else name",
+    "replace": "    return f\"{name} ({', '.join(detectors)})\" if detectors else name",
+    "note": "only the bridge gets detector names"
+  },
+  {
+    "find": "detectors = sorted(set(re.findall(r\"(?:^|; )([a-z_]+): \", str(component.get(\"reason\", \"\")))))",
+    "replace": "detectors = sorted(set(re.findall(r\"^([a-z_]+): \", str(component.get(\"reason\", \"\")))))",
+    "note": "every detector in a joined reason must be named, not only the first"
+  }
 ]

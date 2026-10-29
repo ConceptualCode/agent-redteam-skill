@@ -118,7 +118,10 @@ class CanaryFixture:
                                "(often root-owned). Pass on_undeletable=<function that chowns them> to CanaryFixture.")
 
     def reset(self) -> None:
-        for d in (self.runtime, self.outside):
+        # the two folders this class owns, plus any other top-level folder a plant lives in (say `tmp`, mounted as the
+        # container's /tmp): left alone, a file one test wrote there is still there for the next test
+        planted_roots = sorted({Path(rel).parts[0] for rel in self.plant if Path(rel).parts} - {"rt", "home"})
+        for d in (self.runtime, self.outside, *(self.root / top for top in planted_roots)):
             self._clear(d)
         self.workspace.mkdir(parents=True); self.outside.mkdir(parents=True); self.hits.clear()
         (self.runtime / "api_token").write_text(TOKENFILE)
