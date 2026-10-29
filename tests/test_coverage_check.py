@@ -75,3 +75,10 @@ def test_the_command_line_prints_coverage_and_exits_nonzero_only_on_a_dangerous_
 def test_a_null_limit_counts_as_not_configured_like_a_missing_one():
     rows = {r.field: r.status for r in coverage({"max_reply_chars": None, "max_tool_calls": None})}
     assert rows["max_reply_chars"] == "not_configured" and rows["max_tool_calls"] == "not_configured"
+
+
+def test_arg_domains_feeds_its_detector_and_is_not_configured_when_empty():
+    rows = {r.field: r for r in coverage({"arg_domains": {"send_email.to": ["shop.example"]}})}
+    assert rows["arg_domains"].status == "configured" and rows["arg_domains"].detector == "arg_outside_domains"
+    assert {r.field: r.status for r in coverage({})}["arg_domains"] == "not_configured"
+    assert {r.field: r.status for r in coverage({"arg_domains": {}})}["arg_domains"] == "not_configured"

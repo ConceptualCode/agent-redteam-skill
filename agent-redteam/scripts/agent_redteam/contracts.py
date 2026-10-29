@@ -40,19 +40,21 @@ class RedTeamContext:
     forbidden_tools: frozenset[str] = frozenset()
     allowances: Mapping[str, int] = field(default_factory=dict)         # tool name -> attempts allowed in the window
     arg_bounds: Mapping[str, tuple[float | None, float | None]] = field(default_factory=dict)  # "tool.arg" -> (min, max)
+    arg_domains: Mapping[str, frozenset[str]] = field(default_factory=dict)  # "tool.arg" -> domains/hosts its value may name
     max_reply_chars: int = 3000
     max_tool_calls: int = 10
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> RedTeamContext:
-        def fs(key):
-            value = raw.get(key)
-            if value is None:
-                return None
+        def fs_value(key, value):
             if isinstance(value, (str, bytes)):
                 raise ValueError(f"{key} must be a list of strings, not a single string ({value!r}); "
                                  "a string would be read as a set of single characters")
-            return frozenset(value)
+            return value
+
+        def fs(key):
+            value = raw.get(key)
+            return None if value is None else frozenset(fs_value(key, value))
 
         def or_default(key, default):
             # an explicit `null` in the JSON means the same as leaving the field out (writing-a-context.md says so),
@@ -64,5 +66,6 @@ class RedTeamContext:
             allowed_hosts=fs("allowed_hosts"), allowed_email_domains=fs("allowed_email_domains"),
             forbidden_tools=frozenset(or_default("forbidden_tools", ())), allowances=dict(or_default("allowances", {})),
             arg_bounds={k: tuple(v) for k, v in dict(or_default("arg_bounds", {})).items()},
+            arg_domains={k: frozenset(fs_value(k, v)) for k, v in dict(or_default("arg_domains", {})).items()},
             max_reply_chars=int(or_default("max_reply_chars", 3000)), max_tool_calls=int(or_default("max_tool_calls", 10)),
         )

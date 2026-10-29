@@ -40,8 +40,8 @@
     "note": "basic counted as an extra wrapper in the test count"
   },
   {
-    "find": "canary_block = f\"    - type: python\\n      value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"",
-    "replace": "canary_block = \"\"",
+    "find": "canary_block = f\"    - type: python\\n      value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"\n    t",
+    "replace": "canary_block = \"\"\n    t",
     "note": "the canary assertion is never written into the config"
   },
   {
@@ -80,18 +80,18 @@
     "note": "view command paths must be quoted"
   },
   {
-    "find": "f\"      value: {json.dumps('file://' + bridge_path)}",
-    "replace": "f\"      value: file://{bridge_path}",
+    "find": "f\"      value: {json.dumps('file://' + bridge_path)}\\n      config:\\n        context_file: {json.dumps(context_file)}\\n\"\n        f\"{canary_block}\"\n        f\"t",
+    "replace": "f\"      value: file://{bridge_path}\\n      config:\\n        context_file: {json.dumps(context_file)}\\n\"\n        f\"{canary_block}\"\n        f\"t",
     "note": "the bridge path must be quoted"
   },
   {
-    "find": "context_file: {json.dumps(context_file)}",
-    "replace": "context_file: {context_file}",
+    "find": "context_file: {json.dumps(context_file)}\\n\"\n        f\"{canary_block}\"\n        f\"t",
+    "replace": "context_file: {context_file}\\n\"\n        f\"{canary_block}\"\n        f\"t",
     "note": "the context path must be quoted"
   },
   {
-    "find": "value: {json.dumps('file://' + canary_path)}",
-    "replace": "value: file://{canary_path}",
+    "find": "value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"\n    t",
+    "replace": "value: file://{canary_path}\\n\" if canary_path else \"\"\n    t",
     "note": "the canary path must be quoted"
   },
   {
@@ -128,5 +128,85 @@
     "find": "    needs = _check_replies_approved(strategies, remote_replies_approved, remote_generation_enabled)\n    args = [promptfoo, \"redteam\", \"eval\"",
     "replace": "    needs = _check_replies_approved(strategies, remote_replies_approved)\n    args = [promptfoo, \"redteam\", \"eval\"",
     "note": "eval must pass remote_generation_enabled through"
+  },
+  {
+    "find": "        lines.append(f\"export PATH={q(node_bin_dir)}:$PATH\")",
+    "replace": "        pass",
+    "note": "the Node preflight accepted must go first on PATH"
+  },
+  {
+    "find": "    if not remote_generation:\n        lines.append(\"export PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true\")",
+    "replace": "    if True:\n        lines.append(\"export PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true\")",
+    "note": "an approved run must leave remote generation on"
+  },
+  {
+    "find": "    if not remote_generation:\n        lines.append(\"export PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true\")",
+    "replace": "    if False:\n        lines.append(\"export PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION=true\")",
+    "note": "remote generation must be switched off by default"
+  },
+  {
+    "find": "export CI=true PROMPTFOO_DISABLE_SHARING=true PROMPTFOO_DISABLE_TELEMETRY=true PROMPTFOO_DISABLE_UPDATE=true",
+    "replace": "export CI=true PROMPTFOO_DISABLE_TELEMETRY=true PROMPTFOO_DISABLE_UPDATE=true",
+    "note": "sharing must be switched off"
+  },
+  {
+    "find": "    lines.append(f\"export PROMPTFOO_CONFIG_DIR={q(config_dir)}\")",
+    "replace": "    lines.append(f\"export PROMPTFOO_CONFIG_DIR={config_dir}\")",
+    "note": "a config dir with a space must be quoted"
+  },
+  {
+    "find": "    if meter_port is not None:",
+    "replace": "    if meter_port is None:",
+    "note": "the meter URL is written only when a port is given"
+  },
+  {
+    "find": "OPENAI_API_KEY=throwaway OPENAI_BASE_URL=http://127.0.0.1:{int(meter_port)}/v1",
+    "replace": "OPENAI_BASE_URL=http://127.0.0.1:{int(meter_port)}/v1",
+    "note": "the agent gets a throwaway key"
+  },
+  {
+    "find": "    if not tests:\n        raise ValueError(\"at least one test is required\")",
+    "replace": "    if False:\n        raise ValueError(\"at least one test is required\")",
+    "note": "an empty test list must be refused"
+  },
+  {
+    "find": "        if not t.get(\"description\") or \"q\" not in t:",
+    "replace": "        if False:",
+    "note": "a test without description or q must be refused"
+  },
+  {
+    "find": "        if t[\"description\"] in seen:",
+    "replace": "        if False:",
+    "note": "duplicate test names must be refused"
+  },
+  {
+    "find": "vars: {{q: {json.dumps(t['q'])}}}",
+    "replace": "vars: {{q: {t['q']}}}",
+    "note": "attack text must be quoted"
+  },
+  {
+    "find": "f\"  - description: {json.dumps(t['description'])}",
+    "replace": "f\"  - description: {t['description']}",
+    "note": "test names must be quoted"
+  },
+  {
+    "find": "canary_block = f\"    - type: python\\n      value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"\n    tests_yaml",
+    "replace": "canary_block = \"\"\n    tests_yaml",
+    "note": "the canary must be wired in when given"
+  },
+  {
+    "find": "        f\"defaultTest:\\n{judge_block}  assert:\\n    - type: python\\n\"\n        f\"      value: {json.dumps('file://' + bridge_path)}",
+    "replace": "        f\"defaultTest:\\n{judge_block}  assert:\\n    - type: python\\n\"\n        f\"      value: file://{bridge_path}",
+    "note": "Path A: the bridge path must be quoted"
+  },
+  {
+    "find": "context_file: {json.dumps(context_file)}\\n\"\n        f\"{canary_block}\"\n        f\"redteam:",
+    "replace": "context_file: {context_file}\\n\"\n        f\"{canary_block}\"\n        f\"redteam:",
+    "note": "Path A: the context path must be quoted"
+  },
+  {
+    "find": "canary_block = f\"    - type: python\\n      value: {json.dumps('file://' + canary_path)}\\n\" if canary_path else \"\"\n    return (\n        \"description: auto-generated red team run\\n\"",
+    "replace": "canary_block = \"\"\n    return (\n        \"description: auto-generated red team run\\n\"",
+    "note": "Path A: the canary assertion must be written when given"
   }
 ]

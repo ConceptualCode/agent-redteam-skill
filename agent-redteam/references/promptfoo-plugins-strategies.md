@@ -51,7 +51,7 @@ every content-safety/bias/vertical-compliance group. For all of those, PromptFoo
 LLM judging the response against a rubric) is the only grading mechanism, same as if you'd set this up by hand.
 Our bridge still runs on every test (via `defaultTest.assert`, confirmed to carry through to every generated test
 case), but for anything outside tool/permission boundaries it will almost always report "held" regardless of the
-actual content, since none of our 7 detectors are looking for that. Say this plainly when reporting results --
+actual content, since none of our generic detectors are looking for that. Say this plainly when reporting results --
 don't imply uniform deterministic coverage.
 
 ## Baseline -- propose these for essentially any agent

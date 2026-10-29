@@ -3,7 +3,7 @@
 An adaptive strategy (jailbreak, ...) judges only with PromptFoo's LLM grader and drops the provider's metadata, so
 our detectors/oracle never ran on those tests. This pulls each test's final attack prompt out of an exported results
 file and sends it N times through the provider as an ordinary request, and reads the provider's own `oracle`
-(the canary check). The seven bridge detectors are not applied here. A provider that returns no `oracle` at all
+(the canary check). The bridge's generic detectors are not applied here. A provider that returns no `oracle` at all
 is reported inconclusive, never as "nothing found": nothing was checked.
 
     python -m agent_redteam.replay_check results.json --provider /path/provider.py --runs 3 --out replay.json

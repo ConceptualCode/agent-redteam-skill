@@ -90,7 +90,7 @@ def format_audit(a: WorkflowAudit) -> str:
     ]
     lines.append("canary oracle wired in (assert_canary.py): "
                  + ("yes" if a.has_canary_assertion else "no -- fine unless the agent runs shell/code/file tools, "
-                    "which the 7 detectors cannot judge (references/canary-oracle.md)"))
+                    "which the generic detectors cannot judge (references/canary-oracle.md)"))
     if not a.has_redteam_section:
         lines += [
             "no `redteam:` section -- Path A was not used at all (pure Path B, or no attacks written yet)",

